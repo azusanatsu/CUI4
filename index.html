@@ -1,0 +1,1006 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>CUI4 · 极简主义浏览器首页</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* ---------- 全局变量 ---------- */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        :root {
+            --bg-gradient: linear-gradient(135deg, #f5f7fe 0%, #e9eef5 100%);
+            --text-primary: #1e2a3e;
+            --text-secondary: #2c3e50;
+            --accent-grey: #4b5e77;
+            --card-glass: rgba(255, 255, 255, 0.55);
+            --glass-border: rgba(255,255,255,0.6);
+            --shadow-sm: 0 8px 20px rgba(0,0,0,0.05);
+            --search-bg: rgba(255,255,255,0.65);
+            --icon-color: #3a4a66;
+            --setting-panel-bg: rgba(245, 247, 252, 0.96);
+            --setting-border: rgba(0,0,0,0.08);
+            --tabs-active: #3a5c8c;
+        }
+
+        body.dark {
+            --bg-gradient: linear-gradient(135deg, #121826 0%, #0f131c 100%);
+            --text-primary: #edf2fb;
+            --text-secondary: #b9c7d9;
+            --accent-grey: #9aaec9;
+            --card-glass: rgba(30,34,46,0.6);
+            --glass-border: rgba(74,111,165,0.25);
+            --shadow-sm: 0 8px 20px rgba(0,0,0,0.4);
+            --search-bg: rgba(40,44,58,0.75);
+            --icon-color: #cdddf7;
+            --setting-panel-bg: rgba(18, 22, 32, 0.96);
+            --setting-border: rgba(255,255,255,0.1);
+            --tabs-active: #6e9eff;
+        }
+
+        body {
+            margin: 0;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            font-family: 'Segoe UI', 'Inter', 'Microsoft YaHei', sans-serif;
+            background: var(--bg-gradient);
+            color: var(--text-primary);
+            transition: background 0.3s, color 0.2s;
+            position: relative;
+        }
+
+        /* 壁纸层 */
+        .wallpaper-layer {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; overflow: hidden;
+        }
+        #bgVideo { width: 100%; height: 100%; object-fit: cover; display: none; }
+        #bgImage { width: 100%; height: 100%; background-size: cover; background-position: center; background-repeat: no-repeat; display: none; }
+        .brightness-mask {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0); pointer-events: none; z-index: 2;
+            transition: background-color 0.2s;
+        }
+        .default-bg-text {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            font-size: 8rem; font-weight: 800; color: rgba(255,255,255,0.2);
+            letter-spacing: 12px; font-family: monospace; white-space: nowrap;
+            pointer-events: none; z-index: 1;
+        }
+
+        /* 主内容区 */
+        .main-content {
+            position: relative; z-index: 10; width: 100%; height: 100%;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            padding: 1rem;
+        }
+        .time-section { text-align: center; margin-bottom: 1.5rem; animation: fadeUp 0.6s ease; }
+        .clock { font-size: 5.5rem; font-weight: 600; letter-spacing: 4px; font-family: 'JetBrains Mono', monospace; }
+        .date { font-size: 1.3rem; opacity: 0.8; margin-top: 0.5rem; }
+        .greeting { font-size: 2rem; margin-top: 1rem; font-weight: 500; }
+        .weather-area { margin-top: 1rem; font-size: 1.1rem; line-height: 1.4; }
+        .weather-area p { margin: 2px 0; }
+
+        /* 搜索框 + 历史记录 */
+        .search-wrapper {
+            margin-top: 3rem; width: 90%; max-width: 560px; position: relative; z-index: 25;
+        }
+        .search-box {
+            background: var(--search-bg); backdrop-filter: blur(16px);
+            border-radius: 64px; border: 1px solid var(--glass-border);
+            display: flex; align-items: center; padding: 0.8rem 1.4rem;
+            box-shadow: var(--shadow-sm);
+        }
+        .search-box i { color: var(--accent-grey); font-size: 1.3rem; margin-right: 12px; }
+        .search-box input {
+            flex: 1; background: transparent; border: none; outline: none;
+            font-size: 1.1rem; color: var(--text-primary); font-weight: 500;
+        }
+        .search-box input::placeholder { color: var(--text-secondary); opacity: 0.6; }
+        .history-panel {
+            position: absolute; top: 100%; left: 0; right: 0; margin-top: 8px;
+            background: var(--search-bg); backdrop-filter: blur(24px); border-radius: 28px;
+            border: 1px solid var(--glass-border); max-height: 0; overflow: hidden;
+            transition: max-height 0.4s cubic-bezier(0.23, 1, 0.32, 1), opacity 0.2s;
+            opacity: 0; z-index: 30; box-shadow: 0 12px 28px rgba(0,0,0,0.2);
+        }
+        .history-panel.show { max-height: 280px; opacity: 1; overflow-y: auto; }
+        .history-item {
+            padding: 12px 20px; cursor: pointer; font-size: 0.95rem; transition: background 0.2s;
+            display: flex; align-items: center; justify-content: space-between;
+            border-bottom: 1px solid var(--setting-border);
+        }
+        .history-item .history-text { display: flex; align-items: center; gap: 12px; flex: 1; }
+        .history-item .delete-history {
+            color: var(--text-secondary); opacity: 0.6; cursor: pointer; padding: 4px 8px;
+            transition: 0.2s; font-size: 14px;
+        }
+        .history-item .delete-history:hover { opacity: 1; color: #ff6b6b; }
+        .history-item:hover { background: rgba(74,111,165,0.2); }
+
+        /* 右下角设置图标 */
+        .settings-icon {
+            position: fixed; bottom: 28px; right: 28px;
+            width: 52px; height: 52px; display: flex; align-items: center; justify-content: center;
+            cursor: pointer; z-index: 200; transition: transform 0.2s;
+            font-size: 28px; color: var(--icon-color); background: transparent;
+        }
+        .settings-icon:hover { transform: scale(1.05); }
+
+        /* 独立齿轮动画层 */
+        .anim-gear {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            font-size: 0px; color: var(--icon-color); opacity: 0;
+            pointer-events: none; transition: all 0.4s cubic-bezier(0.2, 0.9, 0.4, 1.2);
+            z-index: 1000;
+        }
+        .anim-gear.active { font-size: 180px; opacity: 1; }
+        .anim-gear.hide-exit {
+            animation: spinRollOut 0.65s forwards cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        @keyframes spinRollOut {
+            0% { transform: translate(-50%, -50%) rotate(0deg); opacity: 1; left: 50%; }
+            100% { transform: translate(120vw, -50%) rotate(360deg); opacity: 0; left: 100%; }
+        }
+
+        /* 右侧设置面板 */
+        .settings-panel {
+            position: fixed; top: 0; right: -480px; width: 480px; max-width: 90vw;
+            height: 100vh; background: var(--setting-panel-bg); backdrop-filter: blur(24px);
+            border-left: 1px solid var(--setting-border); box-shadow: -8px 0 32px rgba(0,0,0,0.2);
+            z-index: 400; display: flex; flex-direction: column;
+            transition: right 0.5s cubic-bezier(0.23, 1, 0.32, 1);
+        }
+        .settings-panel.open { right: 0; }
+        .settings-header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 24px 24px 12px; border-bottom: 1px solid var(--setting-border);
+        }
+        .settings-header h2 { font-weight: 600; font-size: 1.6rem; }
+        .close-panel { background: none; border: none; font-size: 28px; cursor: pointer; color: var(--text-secondary); }
+        .settings-scroll { flex: 1; overflow-y: auto; padding: 20px 24px 32px; }
+        .settings-category { margin-bottom: 32px; }
+        .category-title {
+            font-size: 1.2rem; font-weight: 600; margin-bottom: 16px;
+            display: flex; align-items: center; gap: 10px;
+            border-left: 3px solid var(--tabs-active); padding-left: 12px;
+        }
+        .setting-row {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 10px 0; border-bottom: 1px solid var(--setting-border);
+            flex-wrap: wrap; gap: 10px;
+        }
+        .setting-info { flex: 1; }
+        .setting-label { font-weight: 500; font-size: 1rem; }
+        .setting-desc { font-size: 0.75rem; opacity: 0.7; margin-top: 2px; }
+        .setting-control { min-width: 180px; display: flex; justify-content: flex-end; gap: 12px; align-items: center; }
+        select, input[type="text"] {
+            background: var(--card-glass); border: 1px solid var(--glass-border);
+            padding: 6px 12px; border-radius: 40px; color: var(--text-primary);
+            outline: none; font-size: 0.85rem;
+        }
+        .theme-buttons { display: flex; gap: 6px; }
+        .theme-btn { padding: 4px 12px; border-radius: 30px; cursor: pointer; background: rgba(128,128,128,0.2); }
+        .theme-btn.active { background: var(--tabs-active); color: white; }
+        .toggle-switch {
+            width: 44px; height: 22px; background: #aaa; border-radius: 30px;
+            cursor: pointer; transition: 0.2s; position: relative;
+        }
+        .toggle-switch.active { background: #4a6fa5; }
+        .toggle-switch:after {
+            content: ''; width: 18px; height: 18px; background: white; border-radius: 50%;
+            position: absolute; top: 2px; left: 2px; transition: 0.2s;
+        }
+        .toggle-switch.active:after { left: 24px; }
+        .file-label {
+            background: var(--tabs-active); padding: 6px 14px; border-radius: 36px;
+            color: white; cursor: pointer; font-size: 0.8rem; display: inline-block;
+        }
+        input[type="range"] { width: 140px; }
+        button { background: none; border: none; }
+        .clear-btn {
+            background: var(--tabs-active); color: white; border-radius: 30px;
+            padding: 4px 12px; font-size: 12px; cursor: pointer;
+        }
+        .location-select-group { display: flex; gap: 8px; flex-wrap: wrap; }
+        .location-select-group select { flex: 1; min-width: 100px; }
+
+        /* 左侧任务面板 */
+        .task-panel {
+            position: fixed; left: 0; top: 0; width: 500px; max-width: 90vw;
+            height: 100vh; background: var(--setting-panel-bg); backdrop-filter: blur(24px);
+            border-right: 1px solid var(--glass-border); box-shadow: 8px 0 32px rgba(0,0,0,0.2);
+            z-index: 350; transform: translateX(-100%);
+            transition: transform 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+            display: flex; flex-direction: column; overflow: hidden;
+        }
+        .task-panel.open { transform: translateX(0); }
+        .task-header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 20px 20px 12px; border-bottom: 1px solid var(--setting-border);
+        }
+        .task-header h3 { font-size: 1.4rem; font-weight: 500; display: flex; align-items: center; gap: 12px; }
+        .task-header .header-actions { display: flex; gap: 12px; }
+        .close-task-panel { font-size: 24px; cursor: pointer; color: var(--text-secondary); }
+        .task-list {
+            flex: 1; overflow-y: auto; padding: 16px;
+            display: flex; flex-direction: column; gap: 20px;
+        }
+        .task-card {
+            background: var(--card-glass); backdrop-filter: blur(8px);
+            border-radius: 20px; border: 1px solid var(--glass-border);
+            padding: 16px; transition: all 0.2s; position: relative;
+        }
+        .task-card .task-close {
+            position: absolute; top: 12px; right: 16px;
+            font-size: 18px; cursor: pointer; color: var(--text-secondary); opacity: 0.7;
+        }
+        .task-card .task-close:hover { opacity: 1; color: #ff6b6b; }
+        .task-title {
+            font-weight: 600; font-size: 1rem; padding-right: 28px;
+            margin-bottom: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .task-preview {
+            font-size: 0.85rem; color: var(--text-secondary);
+            max-height: 200px; overflow: auto; border-radius: 12px;
+            background: rgba(0,0,0,0.05); display: flex; align-items: center; justify-content: center;
+        }
+        .task-preview img, .task-preview video {
+            max-width: 100%; max-height: 180px; border-radius: 8px;
+        }
+        .task-preview pre {
+            font-family: monospace; font-size: 0.75rem;
+            padding: 10px; white-space: pre-wrap; word-break: break-all;
+            max-height: 180px; overflow: auto;
+        }
+        .empty-tasks {
+            text-align: center; padding: 40px 20px;
+            color: var(--text-secondary); opacity: 0.6;
+        }
+        @media (max-width: 640px) {
+            .clock { font-size: 3rem; }
+            .greeting { font-size: 1.4rem; }
+            .settings-panel { width: 100vw; right: -100vw; }
+            .task-panel { width: 90vw; }
+            .location-select-group select { min-width: 80px; }
+        }
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+<div id="startupOverlay" style="position:fixed; inset:0; background:#000; z-index:10000; display:flex; align-items:center; justify-content:center; transition:opacity 0.2s;">
+    <div style="color:#ccdeff; font-size:1.8rem; letter-spacing:2px;">Welcome Use CUI4</div>
+</div>
+
+<div class="wallpaper-layer">
+    <div id="bgImage"></div>
+    <video id="bgVideo" muted autoplay loop></video>
+    <div class="default-bg-text" id="defaultBgText">CUI4</div>
+</div>
+<div class="brightness-mask" id="brightnessMask"></div>
+
+<div class="main-content">
+    <div class="time-section">
+        <div class="clock" id="clockDisplay">--:--:--</div>
+        <div class="date" id="dateDisplay">----.--.--</div>
+        <div class="greeting" id="greetingText">凌晨好, USER</div>
+        <div class="weather-area" id="weatherArea">
+            <p id="locationText">📍 获取位置中...</p>
+            <p id="weatherText">☁️ 加载天气...</p>
+            <p id="tempText">🌡️ --°C</p>
+        </div>
+    </div>
+    <div class="search-wrapper">
+        <div class="search-box">
+            <i class="fas fa-search"></i>
+            <input type="text" id="searchInput" placeholder="请在此处输入您想要搜索的内容" autocomplete="off">
+        </div>
+        <div class="history-panel" id="historyPanel"></div>
+    </div>
+</div>
+
+<div class="settings-icon" id="settingsTrigger">
+    <i class="fas fa-cog"></i>
+</div>
+<div class="anim-gear" id="animGear">
+    <i class="fas fa-cog"></i>
+</div>
+
+<!-- 左侧任务面板 -->
+<div class="task-panel" id="taskPanel">
+    <div class="task-header">
+        <h3><i class="fas fa-tasks"></i> 任务视图</h3>
+        <div class="header-actions">
+            <button id="clearAllTasksBtn" class="clear-btn" style="background:#ff6b6b;"><i class="fas fa-trash-alt"></i> 清空全部</button>
+            <span class="close-task-panel" id="closeTaskPanelBtn">&times;</span>
+        </div>
+    </div>
+    <div class="task-list" id="taskList">
+        <div class="empty-tasks">暂无导入文件</div>
+    </div>
+</div>
+
+<!-- 右侧设置面板 -->
+<div class="settings-panel" id="settingsPanel">
+    <div class="settings-header">
+        <h2>CUI4 · 极简设置</h2>
+        <button class="close-panel" id="closeSettingsBtn"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="settings-scroll">
+        <!-- 主题模式 -->
+        <div class="settings-category">
+            <div class="category-title"><i class="fas fa-palette"></i> 主题模式</div>
+            <div class="setting-row">
+                <div class="setting-info"><span class="setting-label">外观方案</span><div class="setting-desc">日间/夜间/跟随时间自动切换</div></div>
+                <div class="setting-control theme-buttons" id="themeSelectGroup">
+                    <span data-theme="light" class="theme-btn">日间</span>
+                    <span data-theme="dark" class="theme-btn">夜间</span>
+                    <span data-theme="auto" class="theme-btn">跟随时间</span>
+                </div>
+            </div>
+        </div>
+        <!-- 用户名称 -->
+        <div class="settings-category">
+            <div class="category-title"><i class="fas fa-user"></i> 用户名称</div>
+            <div class="setting-row">
+                <div class="setting-info"><span class="setting-label">显示名称</span><div class="setting-desc">更改主页问候语中的名字</div></div>
+                <div class="setting-control"><input type="text" id="usernameInput" placeholder="USER" maxlength="20"></div>
+            </div>
+        </div>
+        <!-- 壁纸 -->
+        <div class="settings-category">
+            <div class="category-title"><i class="fas fa-image"></i> 壁纸 & 个性化</div>
+            <div class="setting-row"><div class="setting-info"><span class="setting-label">更改壁纸</span><div class="setting-desc">支持 .jpg, .png, .mp4</div></div><div class="setting-control"><label class="file-label" id="wallpaperLabel"><i class="fas fa-upload"></i> 选择文件<input type="file" id="wallpaperUpload" accept="image/jpeg,image/png,video/mp4" style="display:none"></label></div></div>
+            <div class="setting-row"><div class="setting-info"><span class="setting-label">壁纸声音</span><div class="setting-desc">仅当使用视频壁纸时有效</div></div><div class="setting-control"><div id="wallpaperSoundToggle" class="toggle-switch"></div></div></div>
+            <div class="setting-row"><div class="setting-info"><span class="setting-label">重置默认壁纸</span><div class="setting-desc">恢复 CUI4 经典风格</div></div><div class="setting-control"><button id="resetWallpaperBtn" class="file-label" style="background:#6c757d;">重置默认</button></div></div>
+        </div>
+        <!-- 文件管理 -->
+        <div class="settings-category">
+            <div class="category-title"><i class="fas fa-folder-open"></i> 文件管理</div>
+            <div class="setting-row">
+                <div class="setting-info"><span class="setting-label">导入文件</span><div class="setting-desc">支持图片、视频、文本等，显示在左侧任务视图</div></div>
+                <div class="setting-control">
+                    <label class="file-label" id="fileImportLabel"><i class="fas fa-file-import"></i> 选择文件<input type="file" id="globalFileImport" style="display:none" multiple></label>
+                    <button id="openTaskViewBtn" class="file-label" style="background: var(--accent-grey);"><i class="fas fa-tasks"></i> 任务视图</button>
+                </div>
+            </div>
+        </div>
+        <!-- 历史记录管理 -->
+        <div class="settings-category">
+            <div class="category-title"><i class="fas fa-history"></i> 历史记录</div>
+            <div class="setting-row">
+                <div class="setting-info"><span class="setting-label">清除全部历史</span><div class="setting-desc">删除所有搜索历史记录</div></div>
+                <div class="setting-control"><button id="clearAllHistoryBtn" class="file-label" style="background:#ff6b6b;">清除全部</button></div>
+            </div>
+        </div>
+        <!-- 亮度 -->
+        <div class="settings-category">
+            <div class="category-title"><i class="fas fa-sun"></i> 显示亮度</div>
+            <div class="setting-row"><div class="setting-info"><span class="setting-label">屏幕亮度</span><div class="setting-desc">模拟亮度遮罩</div></div><div class="setting-control"><input type="range" id="brightnessSlider" min="20" max="100" value="100"></div></div>
+        </div>
+        <!-- 音量 -->
+        <div class="settings-category">
+            <div class="category-title"><i class="fas fa-volume-up"></i> 声音音量</div>
+            <div class="setting-row">
+                <div class="setting-info"><span class="setting-label">系统音量</span><div class="setting-desc">调节后延迟播放反馈音（音量反馈音大小跟随此值）</div></div>
+                <div class="setting-control">
+                    <input type="range" id="volumeSlider" min="0" max="100" value="70">
+                </div>
+            </div>
+        </div>
+        <!-- 地区与天气 -->
+        <div class="settings-category">
+            <div class="category-title"><i class="fas fa-map-marker-alt"></i> 地区与天气</div>
+            <div class="setting-row">
+                <div class="setting-info"><span class="setting-label">地理位置</span><div class="setting-desc">国家/省/城市 三级联动</div></div>
+                <div class="setting-control location-select-group">
+                    <select id="countrySelect"></select>
+                    <select id="stateSelect"></select>
+                    <select id="citySelect"></select>
+                </div>
+            </div>
+            <div class="setting-row"><div class="setting-info"></div><div class="setting-control"><button id="applyLocationBtn" class="file-label">应用并更新天气</button></div></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function() {
+        // 行政区划数据
+        const locationData = {
+            "中国": {
+                "北京市": ["东城区", "西城区", "朝阳区", "海淀区"],
+                "上海市": ["黄浦区", "徐汇区", "静安区", "浦东新区"],
+                "广东省": ["广州市", "深圳市", "珠海市", "佛山市"],
+                "广西壮族自治区": ["南宁市", "柳州市", "桂林市", "北海市"],
+                "江苏省": ["南京市", "苏州市", "无锡市", "常州市"],
+                "浙江省": ["杭州市", "宁波市", "温州市", "嘉兴市"]
+            },
+            "美国": {
+                "California": ["Los Angeles", "San Francisco", "San Diego"],
+                "New York": ["New York City", "Buffalo", "Albany"],
+                "Texas": ["Houston", "Austin", "Dallas"]
+            },
+            "日本": {
+                "东京都": ["新宿区", "涩谷区", "千代田区"],
+                "大阪府": ["大阪市", "堺市", "东大阪市"]
+            },
+            "英国": {
+                "England": ["London", "Manchester", "Liverpool"],
+                "Scotland": ["Edinburgh", "Glasgow"]
+            }
+        };
+        const countries = ["中国", "美国", "日本", "英国"];
+        const STORAGE = 'cui4_user_prefs';
+
+        let prefs = {
+            themeMode: 'auto', userName: 'USER', wallpaperType: 'default', wallpaperData: null,
+            brightness: 100, volume: 70, locationCountry: "中国", locationState: "广西壮族自治区",
+            locationCity: "南宁市", wallpaperSoundEnabled: false
+        };
+        let searchHistory = JSON.parse(localStorage.getItem('cui4_search_history') || '[]');
+        let taskItems = [];
+
+        // DOM 元素
+        const clockEl = document.getElementById('clockDisplay');
+        const dateEl = document.getElementById('dateDisplay');
+        const greetingEl = document.getElementById('greetingText');
+        const locationText = document.getElementById('locationText');
+        const weatherTextSpan = document.getElementById('weatherText');
+        const tempTextSpan = document.getElementById('tempText');
+        const searchInput = document.getElementById('searchInput');
+        const historyPanel = document.getElementById('historyPanel');
+        const settingsTrigger = document.getElementById('settingsTrigger');
+        const settingsPanel = document.getElementById('settingsPanel');
+        const animGear = document.getElementById('animGear');
+        const closeSettingsBtn = document.getElementById('closeSettingsBtn');
+        const brightnessSlider = document.getElementById('brightnessSlider');
+        const volumeSlider = document.getElementById('volumeSlider');
+        const usernameInput = document.getElementById('usernameInput');
+        const countrySelect = document.getElementById('countrySelect');
+        const stateSelect = document.getElementById('stateSelect');
+        const citySelect = document.getElementById('citySelect');
+        const applyLocationBtn = document.getElementById('applyLocationBtn');
+        const resetWallpaperBtn = document.getElementById('resetWallpaperBtn');
+        const wallpaperUpload = document.getElementById('wallpaperUpload');
+        const globalFileImport = document.getElementById('globalFileImport');
+        const wallpaperSoundToggle = document.getElementById('wallpaperSoundToggle');
+        const taskPanel = document.getElementById('taskPanel');
+        const taskListDiv = document.getElementById('taskList');
+        const closeTaskPanelBtn = document.getElementById('closeTaskPanelBtn');
+        const openTaskViewBtn = document.getElementById('openTaskViewBtn');
+        const clearAllTasksBtn = document.getElementById('clearAllTasksBtn');
+        const clearAllHistoryBtn = document.getElementById('clearAllHistoryBtn');
+        const bgImageDiv = document.getElementById('bgImage');
+        const bgVideo = document.getElementById('bgVideo');
+        const defaultBgTextEl = document.getElementById('defaultBgText');
+        const brightnessMask = document.getElementById('brightnessMask');
+
+        // 启动遮罩消失
+        const overlay = document.getElementById('startupOverlay');
+        if(overlay) { overlay.style.opacity = '0'; setTimeout(() => overlay.remove(), 200); }
+
+        // 音量反馈
+        let volumeFeedbackTimer = null;
+        let currentVolumePercent = prefs.volume;
+        function playVolumeFeedback() {
+            try {
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const now = audioCtx.currentTime;
+                const gainNode = audioCtx.createGain();
+                let volGain = (currentVolumePercent / 100) * 0.35;
+                if (volGain < 0.02) volGain = 0.02;
+                gainNode.gain.setValueAtTime(volGain, now);
+                gainNode.gain.exponentialRampToValueAtTime(0.0001, now + 0.4);
+                gainNode.connect(audioCtx.destination);
+                const osc1 = audioCtx.createOscillator();
+                osc1.type = 'sine';
+                osc1.frequency.value = 880;
+                osc1.connect(gainNode);
+                osc1.start(now);
+                osc1.stop(now + 0.25);
+                const osc2 = audioCtx.createOscillator();
+                osc2.type = 'sine';
+                osc2.frequency.value = 1760;
+                osc2.connect(gainNode);
+                osc2.start(now + 0.02);
+                osc2.stop(now + 0.2);
+                audioCtx.resume();
+            } catch(e) { console.warn("音量反馈音失败", e); }
+        }
+        function applyVolumeToMedia(vol) {
+            currentVolumePercent = vol;
+            const volDecimal = vol / 100;
+            if(bgVideo && !bgVideo.muted) bgVideo.volume = volDecimal;
+            document.querySelectorAll('audio, video').forEach(media => {
+                if(media !== bgVideo || !bgVideo.muted) media.volume = volDecimal;
+            });
+        }
+        function setVolumeValue(vol, playSound = true) {
+            prefs.volume = Math.min(100, Math.max(0, vol));
+            volumeSlider.value = prefs.volume;
+            applyVolumeToMedia(prefs.volume);
+            savePrefs();
+            if(playSound) {
+                if(volumeFeedbackTimer) clearTimeout(volumeFeedbackTimer);
+                volumeFeedbackTimer = setTimeout(() => {
+                    playVolumeFeedback();
+                    volumeFeedbackTimer = null;
+                }, 500);
+            }
+        }
+
+        // 任务面板
+        function showToast(msg) {
+            const toast = document.createElement('div');
+            toast.textContent = msg;
+            toast.style.position = 'fixed';
+            toast.style.bottom = '100px';
+            toast.style.left = '50%';
+            toast.style.transform = 'translateX(-50%)';
+            toast.style.backgroundColor = 'var(--tabs-active, #4a6fa5)';
+            toast.style.color = 'white';
+            toast.style.padding = '10px 20px';
+            toast.style.borderRadius = '30px';
+            toast.style.zIndex = '9999';
+            toast.style.fontSize = '14px';
+            toast.style.boxShadow = '0 6px 16px rgba(0,0,0,0.2)';
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 2000);
+        }
+
+        function renderTaskPanel() {
+            if(taskItems.length === 0) {
+                taskListDiv.innerHTML = '<div class="empty-tasks">暂无导入文件</div>';
+                return;
+            }
+            taskListDiv.innerHTML = '';
+            taskItems.slice(0, 3).forEach(task => {
+                const card = document.createElement('div');
+                card.className = 'task-card';
+                let previewHtml = '';
+                if(task.type.startsWith('image/')) {
+                    previewHtml = `<img src="${task.dataURL}" alt="preview">`;
+                } else if(task.type.startsWith('video/')) {
+                    previewHtml = `<video controls muted style="max-height:180px" src="${task.dataURL}"></video>`;
+                } else {
+                    previewHtml = `<pre>${escapeHtml(task.contentText.substring(0, 300))}${task.contentText.length>300 ? '…' : ''}</pre>`;
+                }
+                card.innerHTML = `
+                    <div class="task-close" data-id="${task.id}"><i class="fas fa-times-circle"></i></div>
+                    <div class="task-title">${escapeHtml(task.name)}</div>
+                    <div class="task-preview">${previewHtml}</div>
+                `;
+                taskListDiv.appendChild(card);
+            });
+            document.querySelectorAll('.task-close').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const id = btn.dataset.id;
+                    removeTaskById(id);
+                });
+            });
+        }
+        function removeTaskById(id) {
+            taskItems = taskItems.filter(t => t.id != id);
+            renderTaskPanel();
+        }
+        function clearAllTasks() {
+            taskItems = [];
+            renderTaskPanel();
+            showToast('已清空全部任务');
+        }
+        function addTask(file, content, dataUrl, type) {
+            const newTask = {
+                id: Date.now() + Math.random(),
+                name: file.name,
+                type: type,
+                dataURL: dataUrl,
+                contentText: content || ''
+            };
+            taskItems.unshift(newTask);
+            if(taskItems.length > 3) taskItems.pop();
+            renderTaskPanel();
+            openTaskPanel();
+            showToast(`已导入: ${file.name}`);
+        }
+        function importFileToTask(file) {
+            const type = file.type;
+            if(type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = e => addTask(file, null, e.target.result, type);
+                reader.readAsDataURL(file);
+            } else if(type.startsWith('video/')) {
+                const url = URL.createObjectURL(file);
+                addTask(file, null, url, type);
+            } else if(type.startsWith('text/') || file.name.endsWith('.txt') || file.name.endsWith('.html') || file.name.endsWith('.js') || file.name.endsWith('.css')) {
+                const reader = new FileReader();
+                reader.onload = e => addTask(file, e.target.result, null, type);
+                reader.readAsText(file);
+            } else {
+                addTask(file, `文件类型: ${type || '未知'}\n大小: ${(file.size/1024).toFixed(1)} KB`, null, 'application/octet-stream');
+            }
+        }
+        function handleMultipleFiles(files) {
+            if(!files || files.length === 0) return;
+            Array.from(files).forEach(f => importFileToTask(f));
+            globalFileImport.value = '';
+        }
+        clearAllTasksBtn.addEventListener('click', clearAllTasks);
+
+        // 搜索历史
+        function renderSearchHistory() {
+            if(!searchHistory.length) {
+                historyPanel.classList.remove('show');
+                return;
+            }
+            historyPanel.innerHTML = searchHistory.map((q, idx) => `
+                <div class="history-item" data-index="${idx}">
+                    <div class="history-text"><i class="fas fa-history"></i>${escapeHtml(q)}</div>
+                    <div class="delete-history" data-query="${escapeHtml(q)}"><i class="fas fa-times-circle"></i></div>
+                </div>
+            `).join('');
+            document.querySelectorAll('.history-item .history-text').forEach((item, idx) => {
+                const parent = item.closest('.history-item');
+                const query = searchHistory[parent?.dataset?.index];
+                if(query) item.addEventListener('click', () => { searchInput.value = query; performSearch(); });
+            });
+            document.querySelectorAll('.delete-history').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const query = btn.dataset.query;
+                    if(query) {
+                        const idx = searchHistory.indexOf(query);
+                        if(idx !== -1) searchHistory.splice(idx, 1);
+                        localStorage.setItem('cui4_search_history', JSON.stringify(searchHistory));
+                        renderSearchHistory();
+                    }
+                });
+            });
+        }
+        function clearAllHistory() {
+            searchHistory = [];
+            localStorage.setItem('cui4_search_history', JSON.stringify([]));
+            renderSearchHistory();
+            showToast('已清除全部历史记录');
+        }
+        clearAllHistoryBtn.addEventListener('click', clearAllHistory);
+        function addHistory(query) {
+            if(!query) return;
+            query = query.trim();
+            const idx = searchHistory.indexOf(query);
+            if(idx !== -1) searchHistory.splice(idx,1);
+            searchHistory.unshift(query);
+            if(searchHistory.length>10) searchHistory.pop();
+            localStorage.setItem('cui4_search_history', JSON.stringify(searchHistory));
+            renderSearchHistory();
+        }
+        function performSearch() {
+            let q = searchInput.value.trim();
+            if(!q) return;
+            addHistory(q);
+            let url = q.match(/^https?:\/\//) ? q : `https://www.bing.com/search?q=${encodeURIComponent(q)}`;
+            window.open(url, '_blank');
+        }
+
+        // 三级联动 & 天气
+        function populateCountries() {
+            countrySelect.innerHTML = '';
+            countries.forEach(c => { const opt = document.createElement('option'); opt.value = c; opt.textContent = c; countrySelect.appendChild(opt); });
+        }
+        function populateStates() {
+            const country = countrySelect.value;
+            const states = Object.keys(locationData[country] || {});
+            stateSelect.innerHTML = '';
+            states.forEach(s => { const opt = document.createElement('option'); opt.value = s; opt.textContent = s; stateSelect.appendChild(opt); });
+            if(states.length) populateCities();
+        }
+        function populateCities() {
+            const country = countrySelect.value;
+            const state = stateSelect.value;
+            const cities = (locationData[country] && locationData[country][state]) || [];
+            citySelect.innerHTML = '';
+            cities.forEach(c => { const opt = document.createElement('option'); opt.value = c; opt.textContent = c; citySelect.appendChild(opt); });
+        }
+        function updateLocationDisplay() {
+            const country = countrySelect.value;
+            const state = stateSelect.value;
+            const city = citySelect.value;
+            prefs.locationCountry = country; prefs.locationState = state; prefs.locationCity = city;
+            locationText.innerText = `📍 ${country} ${state} ${city}`;
+            fetchWeatherByCity(city);
+            savePrefs();
+        }
+        async function fetchWeatherByCity(cityName) {
+            try {
+                const weatherRes = await fetch(`https://wttr.in/${encodeURIComponent(cityName)}?format=j1&lang=zh`);
+                const data = await weatherRes.json();
+                const current = data.current_condition[0];
+                const temp = current.temp_C;
+                const weatherDesc = current.weatherDesc[0].value;
+                weatherTextSpan.innerText = `☁️ ${weatherDesc}`;
+                tempTextSpan.innerText = `🌡️ ${temp}°C`;
+            } catch(e) {
+                weatherTextSpan.innerText = '☁️ 天气同步暂不可用';
+                tempTextSpan.innerText = '🌡️ --°C';
+            }
+        }
+
+        // 存储与主题
+        function savePrefs() {
+            let toStore = { ...prefs };
+            if(prefs.wallpaperType !== 'image') toStore.wallpaperData = null;
+            localStorage.setItem(STORAGE, JSON.stringify(toStore));
+        }
+        function loadPrefs() {
+            const stored = localStorage.getItem(STORAGE);
+            if(stored) { try { Object.assign(prefs, JSON.parse(stored)); } catch(e) {} }
+            usernameInput.value = prefs.userName;
+            brightnessSlider.value = prefs.brightness;
+            setVolumeValue(prefs.volume, false);
+            applyBrightness(prefs.brightness);
+            if(prefs.locationCountry && countries.includes(prefs.locationCountry)) {
+                countrySelect.value = prefs.locationCountry;
+                populateStates();
+                if(prefs.locationState && stateSelect.querySelector(`option[value="${prefs.locationState}"]`)) {
+                    stateSelect.value = prefs.locationState;
+                    populateCities();
+                    if(prefs.locationCity && citySelect.querySelector(`option[value="${prefs.locationCity}"]`)) citySelect.value = prefs.locationCity;
+                }
+            } else { populateStates(); }
+            updateLocationDisplay();
+            if(prefs.wallpaperSoundEnabled) wallpaperSoundToggle.classList.add('active');
+            else wallpaperSoundToggle.classList.remove('active');
+            if(prefs.wallpaperType === 'image' && prefs.wallpaperData) setWallpaperImageFromDataURL(prefs.wallpaperData);
+            else resetToDefaultWallpaper();
+            applyThemeFromPref();
+            renderSearchHistory();
+            updateDateTime();
+        }
+        function applyThemeFromPref() {
+            const mode = prefs.themeMode;
+            const hour = new Date().getHours();
+            let isDark = false;
+            if(mode === 'auto') isDark = (hour >= 18 || hour < 6);
+            else if(mode === 'dark') isDark = true;
+            document.body.classList.toggle('dark', isDark);
+            document.querySelectorAll('.theme-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.theme === prefs.themeMode));
+        }
+        function updateDateTime() {
+            const now = new Date();
+            const hh = now.getHours().toString().padStart(2,'0');
+            const mm = now.getMinutes().toString().padStart(2,'0');
+            const ss = now.getSeconds().toString().padStart(2,'0');
+            clockEl.innerText = `${hh}:${mm}:${ss}`;
+            const year = now.getFullYear();
+            const month = (now.getMonth()+1).toString().padStart(2,'0');
+            const day = now.getDate().toString().padStart(2,'0');
+            dateEl.innerText = `${year}.${month}.${day}`;
+            let greet = '';
+            const hour = now.getHours();
+            if(hour<6) greet='凌晨';
+            else if(hour<11) greet='早上';
+            else if(hour<14) greet='中午';
+            else if(hour<18) greet='下午';
+            else if(hour<20) greet='傍晚';
+            else greet='晚上';
+            const name = prefs.userName.trim() || 'USER';
+            greetingEl.innerHTML = `${greet}好，${name}`;
+        }
+        setInterval(updateDateTime, 1000);
+        setInterval(() => { if(prefs.themeMode === 'auto') applyThemeFromPref(); }, 60000);
+
+        // 壁纸功能（修复一次导入）
+        function resetToDefaultWallpaper() {
+            bgVideo.pause();
+            bgVideo.style.display = 'none';
+            bgImageDiv.style.display = 'none';
+            defaultBgTextEl.style.display = 'block';
+            bgImageDiv.style.backgroundImage = '';
+            prefs.wallpaperType = 'default';
+            prefs.wallpaperData = null;
+            savePrefs();
+            showToast('已恢复默认壁纸');
+        }
+        function setWallpaperImageFromDataURL(dataUrl) {
+            bgVideo.pause();
+            bgVideo.style.display = 'none';
+            bgImageDiv.style.display = 'block';
+            bgImageDiv.style.backgroundImage = `url(${dataUrl})`;
+            defaultBgTextEl.style.display = 'none';
+            prefs.wallpaperType = 'image';
+            prefs.wallpaperData = dataUrl;
+            savePrefs();
+            showToast('壁纸已更换');
+        }
+        function handleWallpaperFile(file) {
+            if(!file) return;
+            if(file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = e => setWallpaperImageFromDataURL(e.target.result);
+                reader.readAsDataURL(file);
+                wallpaperUpload.value = '';
+            } else if(file.type === 'video/mp4') {
+                const url = URL.createObjectURL(file);
+                bgVideo.src = url;
+                bgVideo.style.display = 'block';
+                bgImageDiv.style.display = 'none';
+                defaultBgTextEl.style.display = 'none';
+                bgVideo.muted = !prefs.wallpaperSoundEnabled;
+                bgVideo.volume = currentVolumePercent/100;
+                bgVideo.play().catch(e=>console.warn);
+                prefs.wallpaperType = 'video';
+                prefs.wallpaperData = null;
+                savePrefs();
+                wallpaperUpload.value = '';
+                showToast('视频壁纸已应用');
+            } else {
+                alert('仅支持jpg/png/mp4');
+                wallpaperUpload.value = '';
+            }
+        }
+        function setWallpaperSound(enabled) {
+            prefs.wallpaperSoundEnabled = enabled;
+            if(prefs.wallpaperType === 'video') {
+                bgVideo.muted = !enabled;
+                if(!bgVideo.muted) bgVideo.volume = currentVolumePercent/100;
+            }
+            if(enabled) wallpaperSoundToggle.classList.add('active');
+            else wallpaperSoundToggle.classList.remove('active');
+            savePrefs();
+        }
+        wallpaperSoundToggle.addEventListener('click', () => setWallpaperSound(!prefs.wallpaperSoundEnabled));
+        function applyBrightness(val) { brightnessMask.style.backgroundColor = `rgba(0,0,0,${(100-val)/100})`; }
+
+        // 面板动画与控制
+        let isAnimating = false;
+        function openSettingsWithAnimation() {
+            if(isAnimating) return;
+            isAnimating = true;
+            const gear = animGear;
+            gear.classList.remove('hide-exit', 'active');
+            void gear.offsetWidth;
+            gear.classList.add('active');
+            setTimeout(() => {
+                gear.classList.remove('active');
+                gear.classList.add('hide-exit');
+                setTimeout(() => {
+                    gear.classList.remove('hide-exit');
+                    gear.style.removeProperty('animation');
+                    settingsPanel.classList.add('open');
+                    isAnimating = false;
+                }, 650);
+            }, 600);
+        }
+        function closeSettings() { settingsPanel.classList.remove('open'); }
+        function toggleSettings() {
+            if(settingsPanel.classList.contains('open')) closeSettings();
+            else openSettingsWithAnimation();
+        }
+        function openTaskPanel() { taskPanel.classList.add('open'); }
+        function closeTaskPanel() { taskPanel.classList.remove('open'); }
+        function toggleTaskPanel() {
+            if(taskPanel.classList.contains('open')) closeTaskPanel();
+            else openTaskPanel();
+        }
+        function closeAllPanels() { closeSettings(); closeTaskPanel(); }
+
+        // 手势与快捷键
+        function isInputFocused() {
+            const active = document.activeElement;
+            return active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.isContentEditable);
+        }
+        function isTouchOnSlider(target) {
+            let el = target;
+            while(el && el !== document.body) {
+                if(el.tagName === 'INPUT' && el.type === 'range') return true;
+                el = el.parentElement;
+            }
+            return false;
+        }
+        function isTouchOnTaskCard(target) {
+            let el = target;
+            while(el && el !== document.body) {
+                if(el.classList && el.classList.contains('task-card')) return true;
+                el = el.parentElement;
+            }
+            return false;
+        }
+        let touchStartX = 0, touchStartY = 0;
+        const SWIPE_THRESHOLD = 50;
+        function handleTouchStart(e) {
+            if(isInputFocused()) return;
+            if(isTouchOnSlider(e.target)) { touchStartX = 0; return; }
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+        }
+        function handleTouchEnd(e) {
+            if(!touchStartX) return;
+            if(isInputFocused()) { touchStartX = 0; return; }
+            const deltaX = e.changedTouches[0].clientX - touchStartX;
+            const deltaY = e.changedTouches[0].clientY - touchStartY;
+            if(Math.abs(deltaX) < SWIPE_THRESHOLD) { touchStartX = 0; return; }
+            const isSettingsOpen = settingsPanel.classList.contains('open');
+            const isTaskOpen = taskPanel.classList.contains('open');
+            if(deltaX > SWIPE_THRESHOLD && Math.abs(deltaX) > Math.abs(deltaY)) {
+                if(isSettingsOpen) { if(!isTaskOpen) openTaskPanel(); }
+                else if(isTaskOpen) { if(!isTouchOnTaskCard(e.target)) closeTaskPanel(); }
+                else { openTaskPanel(); }
+            } else if(deltaX < -SWIPE_THRESHOLD && Math.abs(deltaX) > Math.abs(deltaY)) {
+                if(isSettingsOpen) { closeSettings(); }
+                else if(isTaskOpen) { if(!isSettingsOpen) openSettingsWithAnimation(); }
+                else { openSettingsWithAnimation(); }
+            }
+            touchStartX = 0;
+        }
+
+        function handleKeydown(e) {
+            if(isInputFocused()) return;
+            if(e.key === 'Tab' && !e.ctrlKey && !e.metaKey) {
+                e.preventDefault();
+                toggleTaskPanel();
+                return;
+            }
+            switch(e.key) {
+                case 'ArrowLeft': e.preventDefault(); toggleSettings(); break;
+                case 'ArrowRight': e.preventDefault(); toggleTaskPanel(); break;
+                case 'Delete': case 'Backspace': e.preventDefault(); closeAllPanels(); break;
+            }
+        }
+        function handleMouseDown(e) {
+            if(isInputFocused()) return;
+            if(e.button === 1) { e.preventDefault(); toggleTaskPanel(); }
+        }
+        function handleContextMenu(e) { e.preventDefault(); toggleSettings(); }
+
+        document.addEventListener('touchstart', handleTouchStart, { passive: false });
+        document.addEventListener('touchend', handleTouchEnd);
+        document.addEventListener('keydown', handleKeydown);
+        document.addEventListener('mousedown', handleMouseDown);
+        document.addEventListener('contextmenu', handleContextMenu);
+
+        // 常规UI事件
+        settingsTrigger.addEventListener('click', () => openSettingsWithAnimation());
+        closeSettingsBtn.addEventListener('click', closeSettings);
+        document.addEventListener('click', (e) => {
+            if(!settingsPanel.contains(e.target) && !settingsTrigger.contains(e.target) && settingsPanel.classList.contains('open')) closeSettings();
+            if(!taskPanel.contains(e.target) && e.target !== openTaskViewBtn && e.target.closest('#openTaskViewBtn') === null && taskPanel.classList.contains('open')) closeTaskPanel();
+        });
+        openTaskViewBtn.addEventListener('click', toggleTaskPanel);
+        closeTaskPanelBtn.addEventListener('click', closeTaskPanel);
+        
+        searchInput.addEventListener('focus', () => { if(searchHistory.length) historyPanel.classList.add('show'); });
+        searchInput.addEventListener('blur', () => setTimeout(() => historyPanel.classList.remove('show'), 200));
+        searchInput.addEventListener('keypress', e => { if(e.key === 'Enter') performSearch(); });
+
+        document.querySelectorAll('.theme-btn').forEach(btn => {
+            btn.addEventListener('click', () => { prefs.themeMode = btn.dataset.theme; applyThemeFromPref(); savePrefs(); });
+        });
+        usernameInput.addEventListener('change', () => { prefs.userName = usernameInput.value; savePrefs(); updateDateTime(); });
+        brightnessSlider.addEventListener('input', e => { prefs.brightness = e.target.value; applyBrightness(prefs.brightness); savePrefs(); });
+        volumeSlider.addEventListener('input', e => setVolumeValue(e.target.value, true));
+        applyLocationBtn.addEventListener('click', updateLocationDisplay);
+        resetWallpaperBtn.addEventListener('click', resetToDefaultWallpaper);
+        
+        // 关键修复：文件选择器只绑定一次 change，无额外手动 click
+        wallpaperUpload.addEventListener('change', e => { if(e.target.files && e.target.files[0]) handleWallpaperFile(e.target.files[0]); });
+        globalFileImport.addEventListener('change', e => { if(e.target.files) handleMultipleFiles(e.target.files); });
+        
+        // 初始化
+        populateCountries();
+        loadPrefs();
+        applyVolumeToMedia(prefs.volume);
+        renderTaskPanel();
+        function escapeHtml(str) { return str.replace(/[&<>]/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m])); }
+    })();
+</script>
+</body>
+</html>
