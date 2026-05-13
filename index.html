@@ -103,6 +103,19 @@
             font-size: 1.1rem; color: var(--text-primary); font-weight: 500;
         }
         .search-box input::placeholder { color: var(--text-secondary); opacity: 0.6; }
+        .search-confirm-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--icon-color);
+            font-size: 1.3rem;
+            margin-left: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.1s;
+        }
+        .search-confirm-btn:active { transform: scale(0.96); }
         .history-panel {
             position: absolute; top: 100%; left: 0; right: 0; margin-top: 8px;
             background: var(--search-bg); backdrop-filter: blur(24px); border-radius: 28px;
@@ -303,6 +316,7 @@
         <div class="search-box">
             <i class="fas fa-search"></i>
             <input type="text" id="searchInput" placeholder="请在此处输入您想要搜索的内容" autocomplete="off">
+            <button class="search-confirm-btn" id="searchConfirmBtn"><i class="fas fa-arrow-right"></i></button>
         </div>
         <div class="history-panel" id="historyPanel"></div>
     </div>
@@ -356,10 +370,10 @@
                 <div class="setting-control"><input type="text" id="usernameInput" placeholder="USER" maxlength="20"></div>
             </div>
         </div>
-        <!-- 壁纸 -->
+        <!-- 壁纸 & 个性化 -->
         <div class="settings-category">
             <div class="category-title"><i class="fas fa-image"></i> 壁纸 & 个性化</div>
-            <div class="setting-row"><div class="setting-info"><span class="setting-label">更改壁纸</span><div class="setting-desc">支持 .jpg, .png, .mp4</div></div><div class="setting-control"><label class="file-label" id="wallpaperLabel"><i class="fas fa-upload"></i> 选择文件<input type="file" id="wallpaperUpload" accept="image/jpeg,image/png,video/mp4" style="display:none"></label></div></div>
+            <div class="setting-row"><div class="setting-info"><span class="setting-label">更改壁纸</span><div class="setting-desc">支持 .jpg, .png, .mp4 (图片超过1080P自动压缩)</div></div><div class="setting-control"><label class="file-label" id="wallpaperLabel"><i class="fas fa-upload"></i> 选择文件<input type="file" id="wallpaperUpload" accept="image/jpeg,image/png,video/mp4" style="display:none"></label></div></div>
             <div class="setting-row"><div class="setting-info"><span class="setting-label">壁纸声音</span><div class="setting-desc">仅当使用视频壁纸时有效</div></div><div class="setting-control"><div id="wallpaperSoundToggle" class="toggle-switch"></div></div></div>
             <div class="setting-row"><div class="setting-info"><span class="setting-label">重置默认壁纸</span><div class="setting-desc">恢复 CUI4 经典风格</div></div><div class="setting-control"><button id="resetWallpaperBtn" class="file-label" style="background:#6c757d;">重置默认</button></div></div>
         </div>
@@ -458,6 +472,7 @@
         const weatherTextSpan = document.getElementById('weatherText');
         const tempTextSpan = document.getElementById('tempText');
         const searchInput = document.getElementById('searchInput');
+        const searchConfirmBtn = document.getElementById('searchConfirmBtn');
         const historyPanel = document.getElementById('historyPanel');
         const settingsTrigger = document.getElementById('settingsTrigger');
         const settingsPanel = document.getElementById('settingsPanel');
@@ -485,36 +500,79 @@
         const defaultBgTextEl = document.getElementById('defaultBgText');
         const brightnessMask = document.getElementById('brightnessMask');
 
+        // ------ 图片压缩（限制最大1920x1080）------
+        function compressImageToMax(file, maxWidth = 1920, maxHeight = 1080, quality = 0.85) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = new Image();
+                    img.onload = function() {
+                        let width = img.width;
+                        let height = img.height;
+                        let needCompress = false;
+                        if (width > maxWidth || height > maxHeight) {
+                            needCompress = true;
+                            const ratio = Math.min(maxWidth / width, maxHeight / height);
+                            width = Math.floor(width * ratio);
+                            height = Math.floor(height * ratio);
+                        }
+                        if (!needCompress) {
+                            // 原图尺寸合法，直接返回原DataURL
+                            resolve(e.target.result);
+                            return;
+                        }
+                        const canvas = document.createElement('canvas');
+                        canvas.width = width;
+                        canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+                        const compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
+                        resolve(compressedDataUrl);
+                    };
+                    img.onerror = () => reject(new Error('图片加载失败'));
+                    img.src = e.target.result;
+                };
+                reader.onerror = () => reject(new Error('文件读取失败'));
+                reader.readAsDataURL(file);
+            });
+        }
+
         // 启动遮罩消失
         const overlay = document.getElementById('startupOverlay');
         if(overlay) { overlay.style.opacity = '0'; setTimeout(() => overlay.remove(), 200); }
 
-        // 音量反馈
-        let volumeFeedbackTimer = null;
+        // 音量反馈 (复用同一个AudioContext)
+        let audioCtx = null;
+        function getAudioContext() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            return audioCtx;
+        }
         let currentVolumePercent = prefs.volume;
         function playVolumeFeedback() {
             try {
-                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                const now = audioCtx.currentTime;
-                const gainNode = audioCtx.createGain();
+                const ctx = getAudioContext();
+                const now = ctx.currentTime;
+                const gainNode = ctx.createGain();
                 let volGain = (currentVolumePercent / 100) * 0.35;
                 if (volGain < 0.02) volGain = 0.02;
                 gainNode.gain.setValueAtTime(volGain, now);
                 gainNode.gain.exponentialRampToValueAtTime(0.0001, now + 0.4);
-                gainNode.connect(audioCtx.destination);
-                const osc1 = audioCtx.createOscillator();
+                gainNode.connect(ctx.destination);
+                const osc1 = ctx.createOscillator();
                 osc1.type = 'sine';
                 osc1.frequency.value = 880;
                 osc1.connect(gainNode);
                 osc1.start(now);
                 osc1.stop(now + 0.25);
-                const osc2 = audioCtx.createOscillator();
+                const osc2 = ctx.createOscillator();
                 osc2.type = 'sine';
                 osc2.frequency.value = 1760;
                 osc2.connect(gainNode);
                 osc2.start(now + 0.02);
                 osc2.stop(now + 0.2);
-                audioCtx.resume();
+                ctx.resume();
             } catch(e) { console.warn("音量反馈音失败", e); }
         }
         function applyVolumeToMedia(vol) {
@@ -538,8 +596,26 @@
                 }, 500);
             }
         }
+        let volumeFeedbackTimer = null;
 
-        // 任务面板
+        // 任务面板 - 新增 revoke ObjectURL 辅助
+        function revokeTaskBlobURL(task) {
+            if (task.dataURL && typeof task.dataURL === 'string' && task.dataURL.startsWith('blob:')) {
+                URL.revokeObjectURL(task.dataURL);
+            }
+        }
+        function removeTaskById(id) {
+            const task = taskItems.find(t => t.id == id);
+            if (task) revokeTaskBlobURL(task);
+            taskItems = taskItems.filter(t => t.id != id);
+            renderTaskPanel();
+        }
+        function clearAllTasks() {
+            taskItems.forEach(task => revokeTaskBlobURL(task));
+            taskItems = [];
+            renderTaskPanel();
+            showToast('已清空全部任务');
+        }
         function showToast(msg) {
             const toast = document.createElement('div');
             toast.textContent = msg;
@@ -588,15 +664,6 @@
                     removeTaskById(id);
                 });
             });
-        }
-        function removeTaskById(id) {
-            taskItems = taskItems.filter(t => t.id != id);
-            renderTaskPanel();
-        }
-        function clearAllTasks() {
-            taskItems = [];
-            renderTaskPanel();
-            showToast('已清空全部任务');
         }
         function addTask(file, content, dataUrl, type) {
             const newTask = {
@@ -691,7 +758,7 @@
             window.open(url, '_blank');
         }
 
-        // 三级联动 & 天气
+        // 三级联动 & 天气（中文增强）
         function populateCountries() {
             countrySelect.innerHTML = '';
             countries.forEach(c => { const opt = document.createElement('option'); opt.value = c; opt.textContent = c; countrySelect.appendChild(opt); });
@@ -710,6 +777,38 @@
             citySelect.innerHTML = '';
             cities.forEach(c => { const opt = document.createElement('option'); opt.value = c; opt.textContent = c; citySelect.appendChild(opt); });
         }
+        // 简单的英文天气→中文映射（后备）
+        const weatherMap = {
+            'sunny': '晴朗', 'clear': '晴朗', 'fair': '晴朗',
+            'partly cloudy': '局部多云', 'cloudy': '多云', 'overcast': '阴天',
+            'rain': '雨', 'light rain': '小雨', 'heavy rain': '大雨', 'shower': '阵雨',
+            'snow': '雪', 'light snow': '小雪', 'thunderstorm': '雷雨',
+            'mist': '雾', 'fog': '雾', 'haze': '霾'
+        };
+        function translateWeatherToChinese(engDesc) {
+            if (!engDesc) return '未知天气';
+            if (/[\u4e00-\u9fa5]/.test(engDesc)) return engDesc; // 已含中文
+            const lower = engDesc.toLowerCase();
+            for (const [en, zh] of Object.entries(weatherMap)) {
+                if (lower.includes(en)) return zh;
+            }
+            return engDesc; // 找不到则保留原样
+        }
+        async function fetchWeatherByCity(cityName) {
+            try {
+                const res = await fetch(`https://wttr.in/${encodeURIComponent(cityName)}?format=j1&lang=zh-cn`);
+                const data = await res.json();
+                const current = data.current_condition[0];
+                let weatherDesc = current.weatherDesc[0]?.value || '未知';
+                weatherDesc = translateWeatherToChinese(weatherDesc);
+                const temp = current.temp_C;
+                weatherTextSpan.innerText = `☁️ ${weatherDesc}`;
+                tempTextSpan.innerText = `🌡️ ${temp}°C`;
+            } catch(e) {
+                weatherTextSpan.innerText = '☁️ 天气同步暂不可用';
+                tempTextSpan.innerText = '🌡️ --°C';
+            }
+        }
         function updateLocationDisplay() {
             const country = countrySelect.value;
             const state = stateSelect.value;
@@ -718,20 +817,6 @@
             locationText.innerText = `📍 ${country} ${state} ${city}`;
             fetchWeatherByCity(city);
             savePrefs();
-        }
-        async function fetchWeatherByCity(cityName) {
-            try {
-                const weatherRes = await fetch(`https://wttr.in/${encodeURIComponent(cityName)}?format=j1&lang=zh`);
-                const data = await weatherRes.json();
-                const current = data.current_condition[0];
-                const temp = current.temp_C;
-                const weatherDesc = current.weatherDesc[0].value;
-                weatherTextSpan.innerText = `☁️ ${weatherDesc}`;
-                tempTextSpan.innerText = `🌡️ ${temp}°C`;
-            } catch(e) {
-                weatherTextSpan.innerText = '☁️ 天气同步暂不可用';
-                tempTextSpan.innerText = '🌡️ --°C';
-            }
         }
 
         // 存储与主题
@@ -798,10 +883,13 @@
         setInterval(updateDateTime, 1000);
         setInterval(() => { if(prefs.themeMode === 'auto') applyThemeFromPref(); }, 60000);
 
-        // 壁纸功能（修复一次导入）
+        // 壁纸功能（含图片压缩、视频清理）
         function resetToDefaultWallpaper() {
             bgVideo.pause();
             bgVideo.style.display = 'none';
+            // 清理视频资源
+            bgVideo.src = '';
+            bgVideo.load();
             bgImageDiv.style.display = 'none';
             defaultBgTextEl.style.display = 'block';
             bgImageDiv.style.backgroundImage = '';
@@ -813,6 +901,7 @@
         function setWallpaperImageFromDataURL(dataUrl) {
             bgVideo.pause();
             bgVideo.style.display = 'none';
+            bgVideo.src = '';
             bgImageDiv.style.display = 'block';
             bgImageDiv.style.backgroundImage = `url(${dataUrl})`;
             defaultBgTextEl.style.display = 'none';
@@ -821,12 +910,19 @@
             savePrefs();
             showToast('壁纸已更换');
         }
-        function handleWallpaperFile(file) {
+        async function handleWallpaperFile(file) {
             if(!file) return;
             if(file.type.startsWith('image/')) {
-                const reader = new FileReader();
-                reader.onload = e => setWallpaperImageFromDataURL(e.target.result);
-                reader.readAsDataURL(file);
+                try {
+                    const compressedDataUrl = await compressImageToMax(file, 1920, 1080, 0.85);
+                    setWallpaperImageFromDataURL(compressedDataUrl);
+                } catch(err) {
+                    console.error(err);
+                    showToast('壁纸处理失败, 尝试原图');
+                    const reader = new FileReader();
+                    reader.onload = e => setWallpaperImageFromDataURL(e.target.result);
+                    reader.readAsDataURL(file);
+                }
                 wallpaperUpload.value = '';
             } else if(file.type === 'video/mp4') {
                 const url = URL.createObjectURL(file);
@@ -838,7 +934,7 @@
                 bgVideo.volume = currentVolumePercent/100;
                 bgVideo.play().catch(e=>console.warn);
                 prefs.wallpaperType = 'video';
-                prefs.wallpaperData = null;
+                prefs.wallpaperData = null; // 视频不存入localStorage
                 savePrefs();
                 wallpaperUpload.value = '';
                 showToast('视频壁纸已应用');
@@ -881,19 +977,11 @@
             }, 600);
         }
         function closeSettings() { settingsPanel.classList.remove('open'); }
-        function toggleSettings() {
-            if(settingsPanel.classList.contains('open')) closeSettings();
-            else openSettingsWithAnimation();
-        }
         function openTaskPanel() { taskPanel.classList.add('open'); }
         function closeTaskPanel() { taskPanel.classList.remove('open'); }
-        function toggleTaskPanel() {
-            if(taskPanel.classList.contains('open')) closeTaskPanel();
-            else openTaskPanel();
-        }
         function closeAllPanels() { closeSettings(); closeTaskPanel(); }
 
-        // 手势与快捷键
+        // 手势与快捷键 (原样保留)
         function isInputFocused() {
             const active = document.activeElement;
             return active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.isContentEditable);
@@ -931,13 +1019,12 @@
             const isSettingsOpen = settingsPanel.classList.contains('open');
             const isTaskOpen = taskPanel.classList.contains('open');
             if(deltaX > SWIPE_THRESHOLD && Math.abs(deltaX) > Math.abs(deltaY)) {
-                if(isSettingsOpen) { if(!isTaskOpen) openTaskPanel(); }
-                else if(isTaskOpen) { if(!isTouchOnTaskCard(e.target)) closeTaskPanel(); }
-                else { openTaskPanel(); }
+                if(isSettingsOpen) { openTaskPanel(); }
+                else if(!isTaskOpen) { openTaskPanel(); }
+                else { closeTaskPanel(); }
             } else if(deltaX < -SWIPE_THRESHOLD && Math.abs(deltaX) > Math.abs(deltaY)) {
                 if(isSettingsOpen) { closeSettings(); }
-                else if(isTaskOpen) { if(!isSettingsOpen) openSettingsWithAnimation(); }
-                else { openSettingsWithAnimation(); }
+                else if(!isSettingsOpen) { openSettingsWithAnimation(); }
             }
             touchStartX = 0;
         }
@@ -946,20 +1033,21 @@
             if(isInputFocused()) return;
             if(e.key === 'Tab' && !e.ctrlKey && !e.metaKey) {
                 e.preventDefault();
-                toggleTaskPanel();
+                if(taskPanel.classList.contains('open')) closeTaskPanel();
+                else openTaskPanel();
                 return;
             }
             switch(e.key) {
-                case 'ArrowLeft': e.preventDefault(); toggleSettings(); break;
-                case 'ArrowRight': e.preventDefault(); toggleTaskPanel(); break;
+                case 'ArrowLeft': e.preventDefault(); openSettingsWithAnimation(); break;
+                case 'ArrowRight': e.preventDefault(); openTaskPanel(); break;
                 case 'Delete': case 'Backspace': e.preventDefault(); closeAllPanels(); break;
             }
         }
         function handleMouseDown(e) {
             if(isInputFocused()) return;
-            if(e.button === 1) { e.preventDefault(); toggleTaskPanel(); }
+            if(e.button === 1) { e.preventDefault(); openTaskPanel(); }
         }
-        function handleContextMenu(e) { e.preventDefault(); toggleSettings(); }
+        function handleContextMenu(e) { e.preventDefault(); openSettingsWithAnimation(); }
 
         document.addEventListener('touchstart', handleTouchStart, { passive: false });
         document.addEventListener('touchend', handleTouchEnd);
@@ -967,20 +1055,29 @@
         document.addEventListener('mousedown', handleMouseDown);
         document.addEventListener('contextmenu', handleContextMenu);
 
-        // 常规UI事件
+        // -- 新增：确认按钮 + 虚拟键盘弹出
+        searchConfirmBtn.addEventListener('click', performSearch);
+        // 主动弹出虚拟键盘（支持Windows触摸键盘 / macOS 辅助键盘）
+        searchInput.addEventListener('focus', () => {
+            if(searchHistory.length) historyPanel.classList.add('show');
+            // 尝试调用 VirtualKeyboard API
+            if (navigator.virtualKeyboard) {
+                navigator.virtualKeyboard.show();
+            }
+        });
+        searchInput.addEventListener('blur', () => setTimeout(() => historyPanel.classList.remove('show'), 200));
+        searchInput.addEventListener('keypress', e => { if(e.key === 'Enter') performSearch(); });
+
+        // 普通UI事件
         settingsTrigger.addEventListener('click', () => openSettingsWithAnimation());
         closeSettingsBtn.addEventListener('click', closeSettings);
         document.addEventListener('click', (e) => {
             if(!settingsPanel.contains(e.target) && !settingsTrigger.contains(e.target) && settingsPanel.classList.contains('open')) closeSettings();
             if(!taskPanel.contains(e.target) && e.target !== openTaskViewBtn && e.target.closest('#openTaskViewBtn') === null && taskPanel.classList.contains('open')) closeTaskPanel();
         });
-        openTaskViewBtn.addEventListener('click', toggleTaskPanel);
+        openTaskViewBtn.addEventListener('click', () => openTaskPanel());
         closeTaskPanelBtn.addEventListener('click', closeTaskPanel);
         
-        searchInput.addEventListener('focus', () => { if(searchHistory.length) historyPanel.classList.add('show'); });
-        searchInput.addEventListener('blur', () => setTimeout(() => historyPanel.classList.remove('show'), 200));
-        searchInput.addEventListener('keypress', e => { if(e.key === 'Enter') performSearch(); });
-
         document.querySelectorAll('.theme-btn').forEach(btn => {
             btn.addEventListener('click', () => { prefs.themeMode = btn.dataset.theme; applyThemeFromPref(); savePrefs(); });
         });
@@ -990,9 +1087,14 @@
         applyLocationBtn.addEventListener('click', updateLocationDisplay);
         resetWallpaperBtn.addEventListener('click', resetToDefaultWallpaper);
         
-        // 关键修复：文件选择器只绑定一次 change，无额外手动 click
         wallpaperUpload.addEventListener('change', e => { if(e.target.files && e.target.files[0]) handleWallpaperFile(e.target.files[0]); });
         globalFileImport.addEventListener('change', e => { if(e.target.files) handleMultipleFiles(e.target.files); });
+        
+        // 页面关闭前释放所有 blob URL
+        window.addEventListener('beforeunload', () => {
+            taskItems.forEach(task => revokeTaskBlobURL(task));
+            if (bgVideo.src && bgVideo.src.startsWith('blob:')) URL.revokeObjectURL(bgVideo.src);
+        });
         
         // 初始化
         populateCountries();
