@@ -341,7 +341,7 @@
 <!-- 左侧任务面板 -->
 <div class="task-panel" id="taskPanel">
     <div class="task-header">
-        <h3><i class="fas fa-tasks"></i> 任务视图 <span id="taskCountdown" class="countdown-badge">60s</span></h3>
+        <h3><i class="fas fa-tasks"></i> 任务视图 <span id="taskCountdown" class="countdown-badge">24s</span></h3>
         <div class="header-actions">
             <button id="clearAllTasksBtn" class="clear-btn" style="background:#ff6b6b;"><i class="fas fa-trash-alt"></i> 清空全部</button>
             <span class="close-task-panel" id="closeTaskPanelBtn">&times;</span>
@@ -355,7 +355,7 @@
 <!-- 右侧设置面板 -->
 <div class="settings-panel" id="settingsPanel">
     <div class="settings-header">
-        <h2>CUI4 · 极简设置 <span id="settingsCountdown" class="countdown-badge">60s</span></h2>
+        <h2>CUI4 · 极简设置 <span id="settingsCountdown" class="countdown-badge">24s</span></h2>
         <button class="close-panel" id="closeSettingsBtn"><i class="fas fa-times"></i></button>
     </div>
     <div class="settings-scroll">
@@ -509,19 +509,19 @@
         const defaultBgTextEl = document.getElementById('defaultBgText');
         const brightnessMask = document.getElementById('brightnessMask');
 
-        // ----- 倒计时管理器 -----
+        // ----- 倒计时管理器 (24秒) -----
         class Countdown {
             constructor(displayEl, onExpire, options = {}) {
                 this.displayEl = displayEl;
                 this.onExpire = onExpire;
-                this.remaining = 60;       // 剩余秒数
+                this.remaining = 24;       // 改为24秒
                 this.timer = null;
-                this.isPaused = false;      // 外部暂停（例如视频播放）
-                this.panelOpen = false;      // 面板是否打开
+                this.isPaused = false;
+                this.panelOpen = false;
                 this.options = options;
                 this.updateDisplay();
             }
-            start(initialRemaining = 60) {
+            start(initialRemaining = 24) {
                 this.stop();
                 this.remaining = initialRemaining;
                 this.isPaused = false;
@@ -552,7 +552,7 @@
             reset() {
                 if (!this.panelOpen) return;
                 this.stop();
-                this.remaining = 60;
+                this.remaining = 24;
                 this.isPaused = false;
                 this.updateDisplay();
                 if (this.panelOpen && !this.isPaused) {
@@ -562,7 +562,7 @@
             pause() {
                 if (!this.isPaused) {
                     this.isPaused = true;
-                    this.stop();   // 停止倒计时，保留剩余时间
+                    this.stop();
                 }
             }
             resume() {
@@ -584,15 +584,15 @@
             }
         }
 
-        // 设置面板倒计时 (无视频暂停逻辑)
+        // 设置面板倒计时
         const settingsCountdownEl = document.getElementById('settingsCountdown');
         let settingsCountdown = null;
 
-        // 任务面板倒计时 (带视频播放暂停)
+        // 任务面板倒计时
         const taskCountdownEl = document.getElementById('taskCountdown');
         let taskCountdown = null;
 
-        // 监听任务面板内的视频播放状态 (全局委托)
+        // 监听任务面板内的视频播放状态
         let playingVideoCount = 0;
         function updateTaskCountdownPauseByVideo() {
             if (!taskCountdown) return;
@@ -616,7 +616,6 @@
             video.addEventListener('play', playHandler);
             video.addEventListener('pause', pauseHandler);
             video.addEventListener('ended', pauseHandler);
-            // 存储用于解绑 (可选，为了清理)
             video._countdownPlayHandler = playHandler;
             video._countdownPauseHandler = pauseHandler;
         }
@@ -626,11 +625,8 @@
                 if (!vid._countdownPlayHandler) bindVideoEvents(vid);
             });
         }
-        // 当任务列表变化时重新绑定视频
-        const originalRenderTaskPanel = renderTaskPanel; // 后面会覆盖，暂存
 
-        // ----- 原功能函数 (保留大部分，只添加倒计时相关逻辑)-----
-        // 图片压缩函数 (保留)
+        // ----- 原功能函数 (保留，部分略写以保持清晰) -----
         function compressImageToMax(file, maxWidth = 1920, maxHeight = 1080, quality = 0.85) {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
@@ -666,11 +662,9 @@
             });
         }
 
-        // 启动遮罩消失
         const overlay = document.getElementById('startupOverlay');
         if(overlay) { overlay.style.opacity = '0'; setTimeout(() => overlay.remove(), 200); }
 
-        // 音量反馈 (复用同一个AudioContext)
         let audioCtx = null;
         function getAudioContext() {
             if (!audioCtx) {
@@ -727,7 +721,6 @@
         }
         let volumeFeedbackTimer = null;
 
-        // 任务面板操作 (增强版，加入视频事件绑定)
         function revokeTaskBlobURL(task) {
             if (task.dataURL && typeof task.dataURL === 'string' && task.dataURL.startsWith('blob:')) {
                 URL.revokeObjectURL(task.dataURL);
@@ -766,7 +759,6 @@
         function renderTaskPanel() {
             if(taskItems.length === 0) {
                 taskListDiv.innerHTML = '<div class="empty-tasks">暂无导入文件</div>';
-                // 重新绑定视频事件（没有视频，重置计数）
                 playingVideoCount = 0;
                 updateTaskCountdownPauseByVideo();
                 return;
@@ -790,21 +782,16 @@
                 `;
                 taskListDiv.appendChild(card);
             });
-            // 绑定删除按钮事件
             document.querySelectorAll('.task-close').forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     const id = btn.dataset.id;
                     removeTaskById(id);
                 });
             });
-            // 绑定视频播放事件
             observeTaskPanelVideos();
-            // 重置播放计数并重新检测
             playingVideoCount = 0;
             const videos = taskPanel.querySelectorAll('video');
-            videos.forEach(v => {
-                if (!v.paused) playingVideoCount++;
-            });
+            videos.forEach(v => { if (!v.paused) playingVideoCount++; });
             updateTaskCountdownPauseByVideo();
         }
 
@@ -819,7 +806,7 @@
             taskItems.unshift(newTask);
             if(taskItems.length > 3) taskItems.pop();
             renderTaskPanel();
-            openTaskPanel();      // 打开面板时会自动重置倒计时
+            openTaskPanel();
             showToast(`已导入: ${file.name}`);
         }
         function importFileToTask(file) {
@@ -846,7 +833,6 @@
         }
         clearAllTasksBtn.addEventListener('click', clearAllTasks);
 
-        // 搜索历史相关
         function renderSearchHistory() {
             if(!searchHistory.length) {
                 historyPanel.classList.remove('show');
@@ -901,7 +887,6 @@
             window.open(url, '_blank');
         }
 
-        // 三级联动 & 天气
         function populateCountries() {
             countrySelect.innerHTML = '';
             countries.forEach(c => { const opt = document.createElement('option'); opt.value = c; opt.textContent = c; countrySelect.appendChild(opt); });
@@ -961,7 +946,6 @@
             savePrefs();
         }
 
-        // 存储与主题
         function savePrefs() {
             let toStore = { ...prefs };
             if(prefs.wallpaperType !== 'image') toStore.wallpaperData = null;
@@ -1025,7 +1009,6 @@
         setInterval(updateDateTime, 1000);
         setInterval(() => { if(prefs.themeMode === 'auto') applyThemeFromPref(); }, 60000);
 
-        // 壁纸功能
         function resetToDefaultWallpaper() {
             bgVideo.pause();
             bgVideo.style.display = 'none';
@@ -1097,7 +1080,6 @@
         wallpaperSoundToggle.addEventListener('click', () => setWallpaperSound(!prefs.wallpaperSoundEnabled));
         function applyBrightness(val) { brightnessMask.style.backgroundColor = `rgba(0,0,0,${(100-val)/100})`; }
 
-        // 面板动画与控制 (集成倒计时)
         let isAnimating = false;
         function openSettingsWithAnimation() {
             if(isAnimating) return;
@@ -1125,7 +1107,6 @@
         function openTaskPanel() {
             taskPanel.classList.add('open');
             if (taskCountdown) taskCountdown.setPanelOpen(true);
-            // 重新检测视频播放状态
             setTimeout(() => {
                 playingVideoCount = 0;
                 const videos = taskPanel.querySelectorAll('video');
@@ -1139,11 +1120,9 @@
         }
         function closeAllPanels() { closeSettings(); closeTaskPanel(); }
 
-        // 重置倒计时的交互 (面板内任何交互)
         function resetSettingsCountdown() { if (settingsCountdown) settingsCountdown.reset(); }
         function resetTaskCountdown() { if (taskCountdown) taskCountdown.reset(); }
         
-        // 绑定面板重置事件
         settingsPanel.addEventListener('mousemove', resetSettingsCountdown);
         settingsPanel.addEventListener('click', resetSettingsCountdown);
         settingsPanel.addEventListener('touchstart', resetSettingsCountdown);
@@ -1153,7 +1132,6 @@
         taskPanel.addEventListener('touchstart', resetTaskCountdown);
         taskPanel.addEventListener('scroll', resetTaskCountdown);
 
-        // 手势与快捷键 (原有)
         function isInputFocused() {
             const active = document.activeElement;
             return active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.isContentEditable);
@@ -1227,7 +1205,6 @@
         document.addEventListener('mousedown', handleMouseDown);
         document.addEventListener('contextmenu', handleContextMenu);
 
-        // 搜索确认与虚拟键盘
         searchConfirmBtn.addEventListener('click', performSearch);
         searchInput.addEventListener('focus', () => {
             if(searchHistory.length) historyPanel.classList.add('show');
@@ -1257,17 +1234,14 @@
         wallpaperUpload.addEventListener('change', e => { if(e.target.files && e.target.files[0]) handleWallpaperFile(e.target.files[0]); });
         globalFileImport.addEventListener('change', e => { if(e.target.files) handleMultipleFiles(e.target.files); });
         
-        // 页面关闭前释放所有 blob URL
         window.addEventListener('beforeunload', () => {
             taskItems.forEach(task => revokeTaskBlobURL(task));
             if (bgVideo.src && bgVideo.src.startsWith('blob:')) URL.revokeObjectURL(bgVideo.src);
         });
         
-        // 初始化倒计时实例
         settingsCountdown = new Countdown(settingsCountdownEl, () => closeSettings(), {});
         taskCountdown = new Countdown(taskCountdownEl, () => closeTaskPanel(), {});
         
-        // 初始化UI
         populateCountries();
         loadPrefs();
         applyVolumeToMedia(prefs.volume);
