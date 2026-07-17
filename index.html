@@ -2,48 +2,50 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>CUI4</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+    <title>CUI4 · 功能栏版</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        /* ---------- 全局变量 ---------- */
+        /* ===== 全局变量 ===== */
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
             -webkit-tap-highlight-color: transparent;
+            user-select: none;
         }
-
         :root {
             --bg-gradient: linear-gradient(135deg, #f5f7fe 0%, #e9eef5 100%);
             --text-primary: #1e2a3e;
             --text-secondary: #2c3e50;
             --accent-grey: #4b5e77;
             --card-glass: rgba(255, 255, 255, 0.55);
-            --glass-border: rgba(255,255,255,0.6);
-            --shadow-sm: 0 8px 20px rgba(0,0,0,0.05);
-            --search-bg: rgba(255,255,255,0.65);
+            --glass-border: rgba(255, 255, 255, 0.6);
+            --shadow-sm: 0 8px 20px rgba(0, 0, 0, 0.05);
+            --search-bg: rgba(255, 255, 255, 0.65);
             --icon-color: #3a4a66;
             --setting-panel-bg: rgba(245, 247, 252, 0.96);
-            --setting-border: rgba(0,0,0,0.08);
+            --setting-border: rgba(0, 0, 0, 0.08);
             --tabs-active: #3a5c8c;
+            --func-panel-bg: rgba(245, 247, 252, 0.96);
+            --func-card-bg: rgba(255, 255, 255, 0.6);
         }
-
         body.dark {
             --bg-gradient: linear-gradient(135deg, #121826 0%, #0f131c 100%);
             --text-primary: #edf2fb;
             --text-secondary: #b9c7d9;
             --accent-grey: #9aaec9;
-            --card-glass: rgba(30,34,46,0.6);
-            --glass-border: rgba(74,111,165,0.25);
-            --shadow-sm: 0 8px 20px rgba(0,0,0,0.4);
-            --search-bg: rgba(40,44,58,0.75);
+            --card-glass: rgba(30, 34, 46, 0.6);
+            --glass-border: rgba(74, 111, 165, 0.25);
+            --shadow-sm: 0 8px 20px rgba(0, 0, 0, 0.4);
+            --search-bg: rgba(40, 44, 58, 0.75);
             --icon-color: #cdddf7;
             --setting-panel-bg: rgba(18, 22, 32, 0.96);
-            --setting-border: rgba(255,255,255,0.1);
+            --setting-border: rgba(255, 255, 255, 0.1);
             --tabs-active: #6e9eff;
+            --func-panel-bg: rgba(18, 22, 32, 0.96);
+            --func-card-bg: rgba(30, 34, 46, 0.6);
         }
-
         body {
             margin: 0;
             width: 100vw;
@@ -54,55 +56,187 @@
             color: var(--text-primary);
             transition: background 0.3s, color 0.2s;
             position: relative;
+            touch-action: pan-x pan-y;
         }
-
-        /* 壁纸层 */
         .wallpaper-layer {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; overflow: hidden;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            overflow: hidden;
         }
-        #bgVideo { width: 100%; height: 100%; object-fit: cover; display: none; }
-        #bgImage { width: 100%; height: 100%; background-size: cover; background-position: center; background-repeat: no-repeat; display: none; }
+        #bgVideo {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: none;
+        }
+        #bgImage {
+            width: 100%;
+            height: 100%;
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            display: none;
+        }
         .brightness-mask {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background-color: rgba(0,0,0,0); pointer-events: none; z-index: 2;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0);
+            pointer-events: none;
+            z-index: 2;
             transition: background-color 0.2s;
         }
         .default-bg-text {
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            font-size: 8rem; font-weight: 800; color: rgba(255,255,255,0.2);
-            letter-spacing: 12px; font-family: monospace; white-space: nowrap;
-            pointer-events: none; z-index: 1;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 8rem;
+            font-weight: 800;
+            color: rgba(255, 255, 255, 0.2);
+            letter-spacing: 12px;
+            font-family: monospace;
+            white-space: nowrap;
+            pointer-events: none;
+            z-index: 1;
         }
 
-        /* 主内容区 */
+        /* ===== 主内容 ===== */
         .main-content {
-            position: relative; z-index: 10; width: 100%; height: 100%;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            position: relative;
+            z-index: 10;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
             padding: 1rem;
         }
-        .time-section { text-align: center; margin-bottom: 1.5rem; animation: fadeUp 0.6s ease; }
-        .clock { font-size: 5.5rem; font-weight: 600; letter-spacing: 4px; font-family: 'JetBrains Mono', monospace; }
-        .date { font-size: 1.3rem; opacity: 0.8; margin-top: 0.5rem; }
-        .greeting { font-size: 2rem; margin-top: 1rem; font-weight: 500; }
-        .weather-area { margin-top: 1rem; font-size: 1.1rem; line-height: 1.4; }
-        .weather-area p { margin: 2px 0; }
+        .time-section {
+            text-align: center;
+            margin-bottom: 1.5rem;
+            animation: fadeUp 0.6s ease;
+        }
+        .clock {
+            font-size: 5.5rem;
+            font-weight: 600;
+            letter-spacing: 4px;
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .date {
+            font-size: 1.3rem;
+            opacity: 0.8;
+            margin-top: 0.5rem;
+        }
+        .greeting {
+            font-size: 2rem;
+            margin-top: 1rem;
+            font-weight: 500;
+        }
+        .weather-area {
+            margin-top: 1rem;
+            font-size: 1.1rem;
+            line-height: 1.4;
+        }
+        .weather-area p {
+            margin: 2px 0;
+        }
 
-        /* 搜索框 + 历史记录 */
+        /* ===== 左上固定功能 ===== */
+        #fixedWidgets {
+            position: fixed;
+            top: 12px;
+            left: 12px;
+            z-index: 20;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            pointer-events: none;
+        }
+        #fixedWidgets>* {
+            pointer-events: auto;
+        }
+        .fixed-widget {
+            background: var(--card-glass);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 8px 14px;
+            min-width: 120px;
+            font-size: 0.9rem;
+            box-shadow: var(--shadow-sm);
+            transition: opacity 0.3s, transform 0.3s;
+            cursor: grab;
+            touch-action: none;
+        }
+        .fixed-widget.dragging {
+            opacity: 0.8;
+            transform: scale(0.95);
+            cursor: grabbing;
+            z-index: 100;
+        }
+        .fixed-widget .fw-title {
+            font-size: 0.65rem;
+            opacity: 0.6;
+            font-weight: 600;
+            letter-spacing: 1px;
+            margin-bottom: 2px;
+        }
+        .fixed-widget .fw-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.1rem;
+            font-weight: 500;
+        }
+        .fixed-widget .fw-value.countdown {
+            color: var(--tabs-active);
+        }
+        .fixed-widget .fw-value.stopwatch {
+            color: #e67e22;
+        }
+
+        /* ===== 搜索 ===== */
         .search-wrapper {
-            margin-top: 3rem; width: 90%; max-width: 560px; position: relative; z-index: 25;
+            margin-top: 3rem;
+            width: 90%;
+            max-width: 560px;
+            position: relative;
+            z-index: 25;
         }
         .search-box {
-            background: var(--search-bg); backdrop-filter: blur(16px);
-            border-radius: 64px; border: 1px solid var(--glass-border);
-            display: flex; align-items: center; padding: 0.8rem 1.4rem;
+            background: var(--search-bg);
+            backdrop-filter: blur(16px);
+            border-radius: 64px;
+            border: 1px solid var(--glass-border);
+            display: flex;
+            align-items: center;
+            padding: 0.8rem 1.4rem;
             box-shadow: var(--shadow-sm);
         }
-        .search-box i { color: var(--accent-grey); font-size: 1.3rem; margin-right: 12px; }
-        .search-box input {
-            flex: 1; background: transparent; border: none; outline: none;
-            font-size: 1.1rem; color: var(--text-primary); font-weight: 500;
+        .search-box i {
+            color: var(--accent-grey);
+            font-size: 1.3rem;
+            margin-right: 12px;
         }
-        .search-box input::placeholder { color: var(--text-secondary); opacity: 0.6; }
+        .search-box input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            outline: none;
+            font-size: 1.1rem;
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+        .search-box input::placeholder {
+            color: var(--text-secondary);
+            opacity: 0.6;
+        }
         .search-confirm-btn {
             background: none;
             border: none;
@@ -115,1235 +249,2828 @@
             justify-content: center;
             transition: transform 0.1s;
         }
-        .search-confirm-btn:active { transform: scale(0.96); }
-        .history-panel {
-            position: absolute; top: 100%; left: 0; right: 0; margin-top: 8px;
-            background: var(--search-bg); backdrop-filter: blur(24px); border-radius: 28px;
-            border: 1px solid var(--glass-border); max-height: 0; overflow: hidden;
-            transition: max-height 0.4s cubic-bezier(0.23, 1, 0.32, 1), opacity 0.2s;
-            opacity: 0; z-index: 30; box-shadow: 0 12px 28px rgba(0,0,0,0.2);
+        .search-confirm-btn:active {
+            transform: scale(0.96);
         }
-        .history-panel.show { max-height: 280px; opacity: 1; overflow-y: auto; }
+        .history-panel {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            margin-top: 8px;
+            background: var(--search-bg);
+            backdrop-filter: blur(24px);
+            border-radius: 28px;
+            border: 1px solid var(--glass-border);
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.4s cubic-bezier(0.23, 1, 0.32, 1), opacity 0.2s;
+            opacity: 0;
+            z-index: 30;
+            box-shadow: 0 12px 28px rgba(0, 0, 0, 0.2);
+        }
+        .history-panel.show {
+            max-height: 280px;
+            opacity: 1;
+            overflow-y: auto;
+        }
         .history-item {
-            padding: 12px 20px; cursor: pointer; font-size: 0.95rem; transition: background 0.2s;
-            display: flex; align-items: center; justify-content: space-between;
+            padding: 12px 20px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            transition: background 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
             border-bottom: 1px solid var(--setting-border);
         }
-        .history-item .history-text { display: flex; align-items: center; gap: 12px; flex: 1; }
+        .history-item .history-text {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex: 1;
+        }
         .history-item .delete-history {
-            color: var(--text-secondary); opacity: 0.6; cursor: pointer; padding: 4px 8px;
-            transition: 0.2s; font-size: 14px;
+            color: var(--text-secondary);
+            opacity: 0.6;
+            cursor: pointer;
+            padding: 4px 8px;
+            transition: 0.2s;
+            font-size: 14px;
         }
-        .history-item .delete-history:hover { opacity: 1; color: #ff6b6b; }
-        .history-item:hover { background: rgba(74,111,165,0.2); }
+        .history-item .delete-history:hover {
+            opacity: 1;
+            color: #ff6b6b;
+        }
+        .history-item:hover {
+            background: rgba(74, 111, 165, 0.2);
+        }
 
-        /* 右下角设置图标 */
+        /* ===== 右下设置图标 ===== */
         .settings-icon {
-            position: fixed; bottom: 28px; right: 28px;
-            width: 52px; height: 52px; display: flex; align-items: center; justify-content: center;
-            cursor: pointer; z-index: 200; transition: transform 0.2s;
-            font-size: 28px; color: var(--icon-color); background: transparent;
+            position: fixed;
+            bottom: 28px;
+            right: 28px;
+            width: 52px;
+            height: 52px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 200;
+            transition: transform 0.2s;
+            font-size: 28px;
+            color: var(--icon-color);
+            background: transparent;
         }
-        .settings-icon:hover { transform: scale(1.05); }
+        .settings-icon:hover {
+            transform: scale(1.05);
+        }
 
-        /* 独立齿轮动画层 */
         .anim-gear {
-            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            font-size: 0px; color: var(--icon-color); opacity: 0;
-            pointer-events: none; transition: all 0.4s cubic-bezier(0.2, 0.9, 0.4, 1.2);
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 0px;
+            color: var(--icon-color);
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.4s cubic-bezier(0.2, 0.9, 0.4, 1.2);
             z-index: 1000;
         }
-        .anim-gear.active { font-size: 180px; opacity: 1; }
+        .anim-gear.active {
+            font-size: 180px;
+            opacity: 1;
+        }
         .anim-gear.hide-exit {
             animation: spinRollOut 0.65s forwards cubic-bezier(0.4, 0, 0.2, 1);
         }
         @keyframes spinRollOut {
-            0% { transform: translate(-50%, -50%) rotate(0deg); opacity: 1; left: 50%; }
-            100% { transform: translate(120vw, -50%) rotate(360deg); opacity: 0; left: 100%; }
+            0% {
+                transform: translate(-50%, -50%) rotate(0deg);
+                opacity: 1;
+                left: 50%;
+            }
+            100% {
+                transform: translate(120vw, -50%) rotate(360deg);
+                opacity: 0;
+                left: 100%;
+            }
         }
 
-        /* 右侧设置面板 */
+        /* ===== 设置面板 ===== */
         .settings-panel {
-            position: fixed; top: 0; right: -480px; width: 480px; max-width: 90vw;
-            height: 100vh; background: var(--setting-panel-bg); backdrop-filter: blur(24px);
-            border-left: 1px solid var(--setting-border); box-shadow: -8px 0 32px rgba(0,0,0,0.2);
-            z-index: 400; display: flex; flex-direction: column;
+            position: fixed;
+            top: 0;
+            right: -480px;
+            width: 480px;
+            max-width: 90vw;
+            height: 100vh;
+            background: var(--setting-panel-bg);
+            backdrop-filter: blur(24px);
+            border-left: 1px solid var(--setting-border);
+            box-shadow: -8px 0 32px rgba(0, 0, 0, 0.2);
+            z-index: 400;
+            display: flex;
+            flex-direction: column;
             transition: right 0.5s cubic-bezier(0.23, 1, 0.32, 1);
         }
-        .settings-panel.open { right: 0; }
-        .settings-header {
-            display: flex; justify-content: space-between; align-items: center;
-            padding: 24px 24px 12px; border-bottom: 1px solid var(--setting-border);
+        .settings-panel.open {
+            right: 0;
         }
-        .settings-header h2 { font-weight: 600; font-size: 1.6rem; }
+        .settings-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 24px 24px 12px;
+            border-bottom: 1px solid var(--setting-border);
+        }
+        .settings-header h2 {
+            font-weight: 600;
+            font-size: 1.6rem;
+        }
         .countdown-badge {
             font-size: 0.9rem;
-            background: rgba(0,0,0,0.2);
+            background: rgba(0, 0, 0, 0.2);
             padding: 2px 8px;
             border-radius: 40px;
             margin-left: 12px;
             font-family: monospace;
             letter-spacing: 1px;
         }
-        .close-panel { background: none; border: none; font-size: 28px; cursor: pointer; color: var(--text-secondary); }
-        .settings-scroll { flex: 1; overflow-y: auto; padding: 20px 24px 32px; }
-        .settings-category { margin-bottom: 32px; }
+        .close-panel {
+            background: none;
+            border: none;
+            font-size: 28px;
+            cursor: pointer;
+            color: var(--text-secondary);
+        }
+        .settings-scroll {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px 24px 32px;
+        }
+        .settings-category {
+            margin-bottom: 32px;
+        }
         .category-title {
-            font-size: 1.2rem; font-weight: 600; margin-bottom: 16px;
-            display: flex; align-items: center; gap: 10px;
-            border-left: 3px solid var(--tabs-active); padding-left: 12px;
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-left: 3px solid var(--tabs-active);
+            padding-left: 12px;
         }
         .setting-row {
-            display: flex; justify-content: space-between; align-items: center;
-            padding: 10px 0; border-bottom: 1px solid var(--setting-border);
-            flex-wrap: wrap; gap: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--setting-border);
+            flex-wrap: wrap;
+            gap: 10px;
         }
-        .setting-info { flex: 1; }
-        .setting-label { font-weight: 500; font-size: 1rem; }
-        .setting-desc { font-size: 0.75rem; opacity: 0.7; margin-top: 2px; }
-        .setting-control { min-width: 180px; display: flex; justify-content: flex-end; gap: 12px; align-items: center; }
-        select, input[type="text"] {
-            background: var(--card-glass); border: 1px solid var(--glass-border);
-            padding: 6px 12px; border-radius: 40px; color: var(--text-primary);
-            outline: none; font-size: 0.85rem;
+        .setting-info {
+            flex: 1;
         }
-        .theme-buttons { display: flex; gap: 6px; }
-        .theme-btn { padding: 4px 12px; border-radius: 30px; cursor: pointer; background: rgba(128,128,128,0.2); }
-        .theme-btn.active { background: var(--tabs-active); color: white; }
+        .setting-label {
+            font-weight: 500;
+            font-size: 1rem;
+        }
+        .setting-desc {
+            font-size: 0.75rem;
+            opacity: 0.7;
+            margin-top: 2px;
+        }
+        .setting-control {
+            min-width: 180px;
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            align-items: center;
+        }
+        select,
+        input[type="text"] {
+            background: var(--card-glass);
+            border: 1px solid var(--glass-border);
+            padding: 6px 12px;
+            border-radius: 40px;
+            color: var(--text-primary);
+            outline: none;
+            font-size: 0.85rem;
+        }
+        .theme-buttons {
+            display: flex;
+            gap: 6px;
+        }
+        .theme-btn {
+            padding: 4px 12px;
+            border-radius: 30px;
+            cursor: pointer;
+            background: rgba(128, 128, 128, 0.2);
+        }
+        .theme-btn.active {
+            background: var(--tabs-active);
+            color: white;
+        }
         .toggle-switch {
-            width: 44px; height: 22px; background: #aaa; border-radius: 30px;
-            cursor: pointer; transition: 0.2s; position: relative;
+            width: 44px;
+            height: 22px;
+            background: #aaa;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: 0.2s;
+            position: relative;
         }
-        .toggle-switch.active { background: #4a6fa5; }
+        .toggle-switch.active {
+            background: #4a6fa5;
+        }
         .toggle-switch:after {
-            content: ''; width: 18px; height: 18px; background: white; border-radius: 50%;
-            position: absolute; top: 2px; left: 2px; transition: 0.2s;
+            content: '';
+            width: 18px;
+            height: 18px;
+            background: white;
+            border-radius: 50%;
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            transition: 0.2s;
         }
-        .toggle-switch.active:after { left: 24px; }
+        .toggle-switch.active:after {
+            left: 24px;
+        }
         .file-label {
-            background: var(--tabs-active); padding: 6px 14px; border-radius: 36px;
-            color: white; cursor: pointer; font-size: 0.8rem; display: inline-block;
+            background: var(--tabs-active);
+            padding: 6px 14px;
+            border-radius: 36px;
+            color: white;
+            cursor: pointer;
+            font-size: 0.8rem;
+            display: inline-block;
         }
-        input[type="range"] { width: 140px; }
-        button { background: none; border: none; }
+        input[type="range"] {
+            width: 140px;
+        }
+        button {
+            background: none;
+            border: none;
+        }
         .clear-btn {
-            background: var(--tabs-active); color: white; border-radius: 30px;
-            padding: 4px 12px; font-size: 12px; cursor: pointer;
+            background: var(--tabs-active);
+            color: white;
+            border-radius: 30px;
+            padding: 4px 12px;
+            font-size: 12px;
+            cursor: pointer;
         }
-        .location-select-group { display: flex; gap: 8px; flex-wrap: wrap; }
-        .location-select-group select { flex: 1; min-width: 100px; }
+        .location-select-group {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .location-select-group select {
+            flex: 1;
+            min-width: 100px;
+        }
 
-        /* 左侧任务面板 */
+        /* ===== 任务面板 ===== */
         .task-panel {
-            position: fixed; left: 0; top: 0; width: 500px; max-width: 90vw;
-            height: 100vh; background: var(--setting-panel-bg); backdrop-filter: blur(24px);
-            border-right: 1px solid var(--glass-border); box-shadow: 8px 0 32px rgba(0,0,0,0.2);
-            z-index: 350; transform: translateX(-100%);
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 500px;
+            max-width: 90vw;
+            height: 100vh;
+            background: var(--setting-panel-bg);
+            backdrop-filter: blur(24px);
+            border-right: 1px solid var(--glass-border);
+            box-shadow: 8px 0 32px rgba(0, 0, 0, 0.2);
+            z-index: 350;
+            transform: translateX(-100%);
             transition: transform 0.4s cubic-bezier(0.23, 1, 0.32, 1);
-            display: flex; flex-direction: column; overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
         }
-        .task-panel.open { transform: translateX(0); }
+        .task-panel.open {
+            transform: translateX(0);
+        }
         .task-header {
-            display: flex; justify-content: space-between; align-items: center;
-            padding: 20px 20px 12px; border-bottom: 1px solid var(--setting-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 20px 12px;
+            border-bottom: 1px solid var(--setting-border);
         }
-        .task-header h3 { font-size: 1.4rem; font-weight: 500; display: flex; align-items: center; gap: 12px; }
-        .task-header .header-actions { display: flex; gap: 12px; align-items: center; }
-        .close-task-panel { font-size: 24px; cursor: pointer; color: var(--text-secondary); }
+        .task-header h3 {
+            font-size: 1.4rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .task-header .header-actions {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+        .close-task-panel {
+            font-size: 24px;
+            cursor: pointer;
+            color: var(--text-secondary);
+        }
         .task-list {
-            flex: 1; overflow-y: auto; padding: 16px;
-            display: flex; flex-direction: column; gap: 20px;
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
         }
         .task-card {
-            background: var(--card-glass); backdrop-filter: blur(8px);
-            border-radius: 20px; border: 1px solid var(--glass-border);
-            padding: 16px; transition: all 0.2s; position: relative;
+            background: var(--card-glass);
+            backdrop-filter: blur(8px);
+            border-radius: 20px;
+            border: 1px solid var(--glass-border);
+            padding: 16px;
+            transition: all 0.2s;
+            position: relative;
         }
         .task-card .task-close {
-            position: absolute; top: 12px; right: 16px;
-            font-size: 18px; cursor: pointer; color: var(--text-secondary); opacity: 0.7;
+            position: absolute;
+            top: 12px;
+            right: 16px;
+            font-size: 18px;
+            cursor: pointer;
+            color: var(--text-secondary);
+            opacity: 0.7;
         }
-        .task-card .task-close:hover { opacity: 1; color: #ff6b6b; }
+        .task-card .task-close:hover {
+            opacity: 1;
+            color: #ff6b6b;
+        }
         .task-title {
-            font-weight: 600; font-size: 1rem; padding-right: 28px;
-            margin-bottom: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            font-weight: 600;
+            font-size: 1rem;
+            padding-right: 28px;
+            margin-bottom: 12px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
         .task-preview {
-            font-size: 0.85rem; color: var(--text-secondary);
-            max-height: 200px; overflow: auto; border-radius: 12px;
-            background: rgba(0,0,0,0.05); display: flex; align-items: center; justify-content: center;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            max-height: 200px;
+            overflow: auto;
+            border-radius: 12px;
+            background: rgba(0, 0, 0, 0.05);
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
-        .task-preview img, .task-preview video {
-            max-width: 100%; max-height: 180px; border-radius: 8px;
+        .task-preview img,
+        .task-preview video {
+            max-width: 100%;
+            max-height: 180px;
+            border-radius: 8px;
         }
         .task-preview pre {
-            font-family: monospace; font-size: 0.75rem;
-            padding: 10px; white-space: pre-wrap; word-break: break-all;
-            max-height: 180px; overflow: auto;
+            font-family: monospace;
+            font-size: 0.75rem;
+            padding: 10px;
+            white-space: pre-wrap;
+            word-break: break-all;
+            max-height: 180px;
+            overflow: auto;
         }
         .empty-tasks {
-            text-align: center; padding: 40px 20px;
-            color: var(--text-secondary); opacity: 0.6;
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-secondary);
+            opacity: 0.6;
         }
+
+        /* ===== 功能栏 (底部滑出) ===== */
+        .func-panel {
+            position: fixed;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%) translateY(110%);
+            width: min(90vw, 700px);
+            aspect-ratio: 16 / 9;
+            max-height: 80vh;
+            background: var(--func-panel-bg);
+            backdrop-filter: blur(28px);
+            border: 1px solid var(--glass-border);
+            border-radius: 32px 32px 0 0;
+            box-shadow: 0 -12px 48px rgba(0, 0, 0, 0.25);
+            z-index: 500;
+            transition: transform 0.5s cubic-bezier(0.23, 1, 0.32, 1);
+            padding: 20px 24px 28px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .func-panel.open {
+            transform: translateX(-50%) translateY(0);
+        }
+        .func-panel .func-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            flex-shrink: 0;
+        }
+        .func-panel .func-header h3 {
+            font-size: 1.2rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .func-panel .func-header .close-func {
+            font-size: 26px;
+            cursor: pointer;
+            color: var(--text-secondary);
+            background: none;
+            border: none;
+        }
+        .func-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+            flex: 1;
+            min-height: 0;
+        }
+        .func-card {
+            background: var(--func-card-bg);
+            backdrop-filter: blur(8px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 14px 16px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: transform 0.15s, box-shadow 0.2s;
+            box-shadow: var(--shadow-sm);
+            text-align: center;
+            gap: 6px;
+        }
+        .func-card:active {
+            transform: scale(0.95);
+        }
+        .func-card i {
+            font-size: 2.2rem;
+            color: var(--tabs-active);
+            margin-bottom: 4px;
+        }
+        .func-card .func-name {
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+        .func-card .func-desc {
+            font-size: 0.7rem;
+            opacity: 0.6;
+        }
+
+        /* ===== 功能详细面板 (覆盖在功能栏之上) ===== */
+        .func-detail-overlay {
+            position: fixed;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%) translateY(110%);
+            width: min(90vw, 700px);
+            aspect-ratio: 16 / 9;
+            max-height: 80vh;
+            background: var(--func-panel-bg);
+            backdrop-filter: blur(28px);
+            border: 1px solid var(--glass-border);
+            border-radius: 32px 32px 0 0;
+            box-shadow: 0 -12px 48px rgba(0, 0, 0, 0.3);
+            z-index: 510;
+            transition: transform 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+            padding: 20px 24px 28px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .func-detail-overlay.open {
+            transform: translateX(-50%) translateY(0);
+        }
+        .func-detail-overlay .detail-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            flex-shrink: 0;
+        }
+        .func-detail-overlay .detail-header h4 {
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+        .func-detail-overlay .detail-header .back-func {
+            font-size: 22px;
+            cursor: pointer;
+            color: var(--text-secondary);
+            background: none;
+            border: none;
+        }
+        .func-detail-content {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            min-height: 0;
+        }
+
+        /* ===== 倒计时 ===== */
+        .countdown-display {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 3.2rem;
+            font-weight: 600;
+            text-align: center;
+            letter-spacing: 4px;
+            padding: 8px 0;
+        }
+        .countdown-controls {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .countdown-controls input {
+            width: 120px;
+            padding: 6px 10px;
+            border-radius: 30px;
+            border: 1px solid var(--glass-border);
+            background: var(--card-glass);
+            color: var(--text-primary);
+            font-size: 1rem;
+            text-align: center;
+        }
+        .countdown-controls button {
+            padding: 6px 18px;
+            border-radius: 30px;
+            border: none;
+            background: var(--tabs-active);
+            color: white;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+        .countdown-controls button:active {
+            transform: scale(0.94);
+        }
+        .countdown-controls button.secondary {
+            background: var(--accent-grey);
+        }
+
+        /* ===== 秒表 ===== */
+        .stopwatch-display {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 2.8rem;
+            font-weight: 600;
+            text-align: center;
+            letter-spacing: 2px;
+            padding: 8px 0;
+        }
+        .stopwatch-display .ms {
+            font-size: 1.6rem;
+            opacity: 0.7;
+        }
+        .stopwatch-controls {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .stopwatch-controls button {
+            padding: 6px 18px;
+            border-radius: 30px;
+            border: none;
+            background: var(--tabs-active);
+            color: white;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+        .stopwatch-controls button:active {
+            transform: scale(0.94);
+        }
+        .stopwatch-controls button.secondary {
+            background: var(--accent-grey);
+        }
+
+        /* ===== 计算器 (全屏专用) ===== */
+        #fsCalculatorContainer {
+            width: 100%;
+            height: 100%;
+            display: none;
+            flex-direction: column;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        #fsCalculatorContainer.active {
+            display: flex;
+        }
+        #fsCalculatorContainer .calc-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 12px;
+            flex: 1;
+            min-height: 0;
+            height: 100%;
+        }
+        #fsCalculatorContainer .calc-display {
+            grid-column: span 5;
+            background: var(--card-glass);
+            border-radius: 16px;
+            padding: 16px 20px;
+            text-align: right;
+            font-size: 2.8rem;
+            font-weight: 500;
+            font-family: 'JetBrains Mono', monospace;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            min-height: 90px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            border: 1px solid var(--glass-border);
+        }
+        #fsCalculatorContainer .calc-btn {
+            padding: 20px 0;
+            border-radius: 16px;
+            border: 1px solid var(--glass-border);
+            background: var(--card-glass);
+            color: var(--text-primary);
+            font-size: 1.8rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.1s;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #fsCalculatorContainer .calc-btn:active {
+            background: rgba(74, 111, 165, 0.3);
+        }
+        #fsCalculatorContainer .calc-btn.op {
+            background: var(--tabs-active);
+            color: white;
+            border-color: var(--tabs-active);
+        }
+        #fsCalculatorContainer .calc-btn.op:active {
+            opacity: 0.7;
+        }
+        #fsCalculatorContainer .calc-btn.eq {
+            background: #e67e22;
+            color: white;
+            border-color: #e67e22;
+        }
+        #fsCalculatorContainer .calc-btn.eq:active {
+            opacity: 0.7;
+        }
+        #fsCalculatorContainer .calc-btn.span2 {
+            grid-column: span 2;
+        }
+        #fsCalculatorContainer .calc-btn.fn {
+            background: var(--accent-grey);
+            color: white;
+            border-color: var(--accent-grey);
+        }
+
+        /* ===== Advance ===== */
+        .advance-settings {
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+            padding: 4px 0;
+        }
+        .advance-settings .adv-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--setting-border);
+        }
+        .advance-settings .adv-row .adv-label {
+            font-weight: 500;
+        }
+        .advance-settings .adv-row .adv-desc {
+            font-size: 0.7rem;
+            opacity: 0.6;
+        }
+        .advance-settings .adv-row .adv-control {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        /* ===== 全屏覆盖 ===== */
+        .fullscreen-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 600;
+            background: var(--bg-gradient);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.3s ease;
+        }
+        .fullscreen-overlay.active {
+            display: flex;
+        }
+        .fullscreen-overlay .fs-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            width: 90%;
+            max-width: 600px;
+            height: 100%;
+        }
+        .fullscreen-overlay .fs-display {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 5rem;
+            font-weight: 600;
+            letter-spacing: 6px;
+            text-align: center;
+            transition: all 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+        }
+        .fullscreen-overlay .fs-display .ms {
+            font-size: 2.8rem;
+            opacity: 0.7;
+        }
+        .fullscreen-overlay .fs-label {
+            font-size: 0.9rem;
+            opacity: 0.6;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+        .fullscreen-overlay .fs-exit {
+            position: fixed;
+            bottom: 40px;
+            right: 40px;
+            padding: 12px 24px;
+            border-radius: 40px;
+            background: var(--tabs-active);
+            color: white;
+            border: none;
+            font-size: 1rem;
+            cursor: pointer;
+            z-index: 610;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+        }
+        .fullscreen-overlay .fs-exit:active {
+            transform: scale(0.94);
+        }
+
+        /* ===== 响应式 ===== */
         @media (max-width: 640px) {
-            .clock { font-size: 3rem; }
-            .greeting { font-size: 1.4rem; }
-            .settings-panel { width: 100vw; right: -100vw; }
-            .task-panel { width: 90vw; }
-            .location-select-group select { min-width: 80px; }
+            .clock {
+                font-size: 3rem;
+            }
+            .greeting {
+                font-size: 1.4rem;
+            }
+            .settings-panel {
+                width: 100vw;
+                right: -100vw;
+            }
+            .task-panel {
+                width: 90vw;
+            }
+            .location-select-group select {
+                min-width: 80px;
+            }
+            .func-panel,
+            .func-detail-overlay {
+                width: 96vw;
+                border-radius: 24px 24px 0 0;
+                padding: 16px 16px 20px;
+            }
+            .func-grid {
+                gap: 10px;
+            }
+            .func-card i {
+                font-size: 1.6rem;
+            }
+            .func-card .func-name {
+                font-size: 0.8rem;
+            }
+            .countdown-display {
+                font-size: 2.4rem;
+            }
+            .stopwatch-display {
+                font-size: 2rem;
+            }
+            .stopwatch-display .ms {
+                font-size: 1.2rem;
+            }
+            .fullscreen-overlay .fs-display {
+                font-size: 3.2rem;
+            }
+            .fullscreen-overlay .fs-display .ms {
+                font-size: 1.8rem;
+            }
+            #fsCalculatorContainer .calc-btn {
+                font-size: 1.4rem;
+                padding: 14px 0;
+            }
+            #fsCalculatorContainer .calc-display {
+                font-size: 2rem;
+                min-height: 70px;
+                padding: 12px 16px;
+            }
+            .fixed-widget {
+                min-width: 80px;
+                padding: 4px 10px;
+                font-size: 0.75rem;
+            }
+            .fixed-widget .fw-value {
+                font-size: 0.9rem;
+            }
         }
         @keyframes fadeUp {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+        /* 滚动条 */
+        .settings-scroll::-webkit-scrollbar,
+        .task-list::-webkit-scrollbar,
+        .func-detail-content::-webkit-scrollbar {
+            width: 4px;
+        }
+        .settings-scroll::-webkit-scrollbar-thumb,
+        .task-list::-webkit-scrollbar-thumb,
+        .func-detail-content::-webkit-scrollbar-thumb {
+            background: var(--accent-grey);
+            border-radius: 10px;
+        }
+        .no-pinch {
+            touch-action: pan-x pan-y;
         }
     </style>
 </head>
 <body>
-<div id="startupOverlay" style="position:fixed; inset:0; background:#000; z-index:10000; display:flex; align-items:center; justify-content:center; transition:opacity 0.2s;">
-    <div style="color:#ccdeff; font-size:1.8rem; letter-spacing:2px;">Welcome Use CUI4</div>
-</div>
+    <div id="startupOverlay" style="position:fixed; inset:0; background:#000; z-index:10000; display:flex; align-items:center; justify-content:center; transition:opacity 0.2s;">
+        <div style="color:#ccdeff; font-size:1.8rem; letter-spacing:2px;">Welcome Use CUI4</div>
+    </div>
 
-<div class="wallpaper-layer">
-    <div id="bgImage"></div>
-    <video id="bgVideo" muted autoplay loop></video>
-    <div class="default-bg-text" id="defaultBgText">CUI4</div>
-</div>
-<div class="brightness-mask" id="brightnessMask"></div>
+    <div class="wallpaper-layer">
+        <div id="bgImage"></div>
+        <video id="bgVideo" muted autoplay loop></video>
+        <div class="default-bg-text" id="defaultBgText">CUI4</div>
+    </div>
+    <div class="brightness-mask" id="brightnessMask"></div>
 
-<div class="main-content">
-    <div class="time-section">
-        <div class="clock" id="clockDisplay">--:--:--</div>
-        <div class="date" id="dateDisplay">----.--.--</div>
-        <div class="greeting" id="greetingText">凌晨好, USER</div>
-        <div class="weather-area" id="weatherArea">
-            <p id="locationText">📍 获取位置中...</p>
-            <p id="weatherText">☁️ 加载天气...</p>
-            <p id="tempText">🌡️ --°C</p>
+    <!-- 左上固定功能 -->
+    <div id="fixedWidgets"></div>
+
+    <div class="main-content">
+        <div class="time-section">
+            <div class="clock" id="clockDisplay">--:--:--</div>
+            <div class="date" id="dateDisplay">----.--.--</div>
+            <div class="greeting" id="greetingText">凌晨好, USER</div>
+            <div class="weather-area" id="weatherArea">
+                <p id="locationText">📍 获取位置中...</p>
+                <p id="weatherText">☁️ 加载天气...</p>
+                <p id="tempText">🌡️ --°C</p>
+            </div>
+        </div>
+        <div class="search-wrapper">
+            <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" id="searchInput" placeholder="请在此处输入您想要搜索的内容" autocomplete="off">
+                <button class="search-confirm-btn" id="searchConfirmBtn"><i class="fas fa-arrow-right"></i></button>
+            </div>
+            <div class="history-panel" id="historyPanel"></div>
         </div>
     </div>
-    <div class="search-wrapper">
-        <div class="search-box">
-            <i class="fas fa-search"></i>
-            <input type="text" id="searchInput" placeholder="请在此处输入您想要搜索的内容" autocomplete="off">
-            <button class="search-confirm-btn" id="searchConfirmBtn"><i class="fas fa-arrow-right"></i></button>
-        </div>
-        <div class="history-panel" id="historyPanel"></div>
+
+    <div class="settings-icon" id="settingsTrigger">
+        <i class="fas fa-cog"></i>
     </div>
-</div>
+    <div class="anim-gear" id="animGear">
+        <i class="fas fa-cog"></i>
+    </div>
 
-<div class="settings-icon" id="settingsTrigger">
-    <i class="fas fa-cog"></i>
-</div>
-<div class="anim-gear" id="animGear">
-    <i class="fas fa-cog"></i>
-</div>
-
-<!-- 左侧任务面板 -->
-<div class="task-panel" id="taskPanel">
-    <div class="task-header">
-        <h3><i class="fas fa-tasks"></i> 任务视图 <span id="taskCountdown" class="countdown-badge">24s</span></h3>
-        <div class="header-actions">
-            <button id="clearAllTasksBtn" class="clear-btn" style="background:#ff6b6b;"><i class="fas fa-trash-alt"></i> 清空全部</button>
-            <span class="close-task-panel" id="closeTaskPanelBtn">&times;</span>
+    <!-- 任务面板 -->
+    <div class="task-panel" id="taskPanel">
+        <div class="task-header">
+            <h3><i class="fas fa-tasks"></i> 任务视图 <span id="taskCountdown" class="countdown-badge">15s</span></h3>
+            <div class="header-actions">
+                <button id="clearAllTasksBtn" class="clear-btn" style="background:#ff6b6b;"><i class="fas fa-trash-alt"></i> 清空全部</button>
+                <span class="close-task-panel" id="closeTaskPanelBtn">&times;</span>
+            </div>
+        </div>
+        <div class="task-list" id="taskList">
+            <div class="empty-tasks">暂无导入文件</div>
         </div>
     </div>
-    <div class="task-list" id="taskList">
-        <div class="empty-tasks">暂无导入文件</div>
-    </div>
-</div>
 
-<!-- 右侧设置面板 -->
-<div class="settings-panel" id="settingsPanel">
-    <div class="settings-header">
-        <h2>CUI4 · 极简设置 <span id="settingsCountdown" class="countdown-badge">24s</span></h2>
-        <button class="close-panel" id="closeSettingsBtn"><i class="fas fa-times"></i></button>
-    </div>
-    <div class="settings-scroll">
-        <div class="settings-category">
-            <div class="category-title"><i class="fas fa-palette"></i> 主题模式</div>
-            <div class="setting-row">
-                <div class="setting-info"><span class="setting-label">外观方案</span><div class="setting-desc">日间/夜间/跟随时间自动切换</div></div>
-                <div class="setting-control theme-buttons" id="themeSelectGroup">
-                    <span data-theme="light" class="theme-btn">日间</span>
-                    <span data-theme="dark" class="theme-btn">夜间</span>
-                    <span data-theme="auto" class="theme-btn">跟随时间</span>
+    <!-- 设置面板 -->
+    <div class="settings-panel" id="settingsPanel">
+        <div class="settings-header">
+            <h2>CUI4 · 极简设置 <span id="settingsCountdown" class="countdown-badge">8s</span></h2>
+            <button class="close-panel" id="closeSettingsBtn"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="settings-scroll">
+            <!-- 主题 -->
+            <div class="settings-category">
+                <div class="category-title"><i class="fas fa-palette"></i> 主题模式</div>
+                <div class="setting-row">
+                    <div class="setting-info"><span class="setting-label">外观方案</span><div class="setting-desc">日间/夜间/跟随时间自动切换</div></div>
+                    <div class="setting-control theme-buttons" id="themeSelectGroup">
+                        <span data-theme="light" class="theme-btn">日间</span>
+                        <span data-theme="dark" class="theme-btn">夜间</span>
+                        <span data-theme="auto" class="theme-btn">跟随时间</span>
+                    </div>
+                </div>
+            </div>
+            <!-- 用户名称 -->
+            <div class="settings-category">
+                <div class="category-title"><i class="fas fa-user"></i> 用户名称</div>
+                <div class="setting-row">
+                    <div class="setting-info"><span class="setting-label">显示名称</span><div class="setting-desc">更改主页问候语中的名字</div></div>
+                    <div class="setting-control"><input type="text" id="usernameInput" placeholder="USER" maxlength="20"></div>
+                </div>
+            </div>
+            <!-- 壁纸 -->
+            <div class="settings-category">
+                <div class="category-title"><i class="fas fa-image"></i> 壁纸 & 个性化</div>
+                <div class="setting-row"><div class="setting-info"><span class="setting-label">更改壁纸</span><div class="setting-desc">支持 .jpg, .png, .mp4 (视频壁纸刷新后保留)</div></div><div class="setting-control"><label class="file-label" id="wallpaperLabel"><i class="fas fa-upload"></i> 选择文件<input type="file" id="wallpaperUpload" accept="image/jpeg,image/png,video/mp4" style="display:none"></label></div></div>
+                <div class="setting-row"><div class="setting-info"><span class="setting-label">壁纸声音</span><div class="setting-desc">仅当使用视频壁纸时有效</div></div><div class="setting-control"><div id="wallpaperSoundToggle" class="toggle-switch"></div></div></div>
+                <div class="setting-row"><div class="setting-info"><span class="setting-label">重置默认壁纸</span><div class="setting-desc">恢复 CUI4 经典风格</div></div><div class="setting-control"><button id="resetWallpaperBtn" class="file-label" style="background:#6c757d;">重置默认</button></div></div>
+            </div>
+            <!-- 文件管理 -->
+            <div class="settings-category">
+                <div class="category-title"><i class="fas fa-folder-open"></i> 文件管理</div>
+                <div class="setting-row">
+                    <div class="setting-info"><span class="setting-label">导入文件</span><div class="setting-desc">支持图片、视频、文本等，显示在左侧任务视图</div></div>
+                    <div class="setting-control">
+                        <label class="file-label" id="fileImportLabel"><i class="fas fa-file-import"></i> 选择文件<input type="file" id="globalFileImport" style="display:none" multiple></label>
+                        <button id="openTaskViewBtn" class="file-label" style="background: var(--accent-grey);"><i class="fas fa-tasks"></i> 任务视图</button>
+                    </div>
+                </div>
+            </div>
+            <!-- 历史记录 -->
+            <div class="settings-category">
+                <div class="category-title"><i class="fas fa-history"></i> 历史记录</div>
+                <div class="setting-row">
+                    <div class="setting-info"><span class="setting-label">清除全部历史</span><div class="setting-desc">删除所有搜索历史记录</div></div>
+                    <div class="setting-control"><button id="clearAllHistoryBtn" class="file-label" style="background:#ff6b6b;">清除全部</button></div>
+                </div>
+            </div>
+            <!-- 亮度 -->
+            <div class="settings-category">
+                <div class="category-title"><i class="fas fa-sun"></i> 显示亮度</div>
+                <div class="setting-row"><div class="setting-info"><span class="setting-label">屏幕亮度</span><div class="setting-desc">模拟亮度遮罩</div></div><div class="setting-control"><input type="range" id="brightnessSlider" min="20" max="100" value="100"></div></div>
+            </div>
+            <!-- 音量 -->
+            <div class="settings-category">
+                <div class="category-title"><i class="fas fa-volume-up"></i> 声音音量</div>
+                <div class="setting-row">
+                    <div class="setting-info"><span class="setting-label">系统音量</span><div class="setting-desc">调节后延迟播放反馈音</div></div>
+                    <div class="setting-control"><input type="range" id="volumeSlider" min="0" max="100" value="70"></div>
+                </div>
+            </div>
+            <!-- 地区天气 -->
+            <div class="settings-category">
+                <div class="category-title"><i class="fas fa-map-marker-alt"></i> 地区与天气</div>
+                <div class="setting-row">
+                    <div class="setting-info"><span class="setting-label">地理位置</span><div class="setting-desc">国家/省/城市 三级联动</div></div>
+                    <div class="setting-control location-select-group">
+                        <select id="countrySelect"></select>
+                        <select id="stateSelect"></select>
+                        <select id="citySelect"></select>
+                    </div>
+                </div>
+                <div class="setting-row"><div class="setting-info"></div><div class="setting-control"><button id="applyLocationBtn" class="file-label">应用并更新天气</button></div></div>
+            </div>
+            <!-- 功能栏 -->
+            <div class="settings-category">
+                <div class="category-title"><i class="fas fa-cubes"></i> 功能栏</div>
+                <div class="setting-row">
+                    <div class="setting-info"><span class="setting-label">打开功能栏</span><div class="setting-desc">倒计时 · 秒表 · 计算器 · Advance</div></div>
+                    <div class="setting-control"><button id="openFuncPanelBtn" class="file-label" style="background:var(--tabs-active);"><i class="fas fa-arrow-up"></i> 展开</button></div>
                 </div>
             </div>
         </div>
-        <div class="settings-category">
-            <div class="category-title"><i class="fas fa-user"></i> 用户名称</div>
-            <div class="setting-row">
-                <div class="setting-info"><span class="setting-label">显示名称</span><div class="setting-desc">更改主页问候语中的名字</div></div>
-                <div class="setting-control"><input type="text" id="usernameInput" placeholder="USER" maxlength="20"></div>
-            </div>
+    </div>
+
+    <!-- 功能栏 (底部) -->
+    <div class="func-panel" id="funcPanel">
+        <div class="func-header">
+            <h3><i class="fas fa-cubes"></i> 功能栏 <span id="funcCountdown" class="countdown-badge">12s</span></h3>
+            <button class="close-func" id="closeFuncPanelBtn">&times;</button>
         </div>
-        <div class="settings-category">
-            <div class="category-title"><i class="fas fa-image"></i> 壁纸 & 个性化</div>
-            <div class="setting-row"><div class="setting-info"><span class="setting-label">更改壁纸</span><div class="setting-desc">支持 .jpg, .png, .mp4 (视频壁纸刷新后保留)</div></div><div class="setting-control"><label class="file-label" id="wallpaperLabel"><i class="fas fa-upload"></i> 选择文件<input type="file" id="wallpaperUpload" accept="image/jpeg,image/png,video/mp4" style="display:none"></label></div></div>
-            <div class="setting-row"><div class="setting-info"><span class="setting-label">壁纸声音</span><div class="setting-desc">仅当使用视频壁纸时有效</div></div><div class="setting-control"><div id="wallpaperSoundToggle" class="toggle-switch"></div></div></div>
-            <div class="setting-row"><div class="setting-info"><span class="setting-label">重置默认壁纸</span><div class="setting-desc">恢复 CUI4 经典风格</div></div><div class="setting-control"><button id="resetWallpaperBtn" class="file-label" style="background:#6c757d;">重置默认</button></div></div>
-        </div>
-        <div class="settings-category">
-            <div class="category-title"><i class="fas fa-folder-open"></i> 文件管理</div>
-            <div class="setting-row">
-                <div class="setting-info"><span class="setting-label">导入文件</span><div class="setting-desc">支持图片、视频、文本等，显示在左侧任务视图</div></div>
-                <div class="setting-control">
-                    <label class="file-label" id="fileImportLabel"><i class="fas fa-file-import"></i> 选择文件<input type="file" id="globalFileImport" style="display:none" multiple></label>
-                    <button id="openTaskViewBtn" class="file-label" style="background: var(--accent-grey);"><i class="fas fa-tasks"></i> 任务视图</button>
-                </div>
-            </div>
-        </div>
-        <div class="settings-category">
-            <div class="category-title"><i class="fas fa-history"></i> 历史记录</div>
-            <div class="setting-row">
-                <div class="setting-info"><span class="setting-label">清除全部历史</span><div class="setting-desc">删除所有搜索历史记录</div></div>
-                <div class="setting-control"><button id="clearAllHistoryBtn" class="file-label" style="background:#ff6b6b;">清除全部</button></div>
-            </div>
-        </div>
-        <div class="settings-category">
-            <div class="category-title"><i class="fas fa-sun"></i> 显示亮度</div>
-            <div class="setting-row"><div class="setting-info"><span class="setting-label">屏幕亮度</span><div class="setting-desc">模拟亮度遮罩</div></div><div class="setting-control"><input type="range" id="brightnessSlider" min="20" max="100" value="100"></div></div>
-        </div>
-        <div class="settings-category">
-            <div class="category-title"><i class="fas fa-volume-up"></i> 声音音量</div>
-            <div class="setting-row">
-                <div class="setting-info"><span class="setting-label">系统音量</span><div class="setting-desc">调节后延迟播放反馈音（音量反馈音大小跟随此值）</div></div>
-                <div class="setting-control">
-                    <input type="range" id="volumeSlider" min="0" max="100" value="70">
-                </div>
-            </div>
-        </div>
-        <div class="settings-category">
-            <div class="category-title"><i class="fas fa-map-marker-alt"></i> 地区与天气</div>
-            <div class="setting-row">
-                <div class="setting-info"><span class="setting-label">地理位置</span><div class="setting-desc">国家/省/城市 三级联动</div></div>
-                <div class="setting-control location-select-group">
-                    <select id="countrySelect"></select>
-                    <select id="stateSelect"></select>
-                    <select id="citySelect"></select>
-                </div>
-            </div>
-            <div class="setting-row"><div class="setting-info"></div><div class="setting-control"><button id="applyLocationBtn" class="file-label">应用并更新天气</button></div></div>
+        <div class="func-grid" id="funcGrid">
+            <div class="func-card" data-func="countdown"><i class="fas fa-hourglass-half"></i><div class="func-name">倒计时</div><div class="func-desc">HH:MM:SS，归零提示</div></div>
+            <div class="func-card" data-func="stopwatch"><i class="fas fa-stopwatch"></i><div class="func-name">秒表</div><div class="func-desc">毫秒精度，显示小时</div></div>
+            <div class="func-card" data-func="calculator"><i class="fas fa-calculator"></i><div class="func-name">计算器</div><div class="func-desc">全屏UI，键盘支持</div></div>
+            <div class="func-card" data-func="advance"><i class="fas fa-microchip"></i><div class="func-name">Advance</div><div class="func-desc">准时提醒 · 固定主页 · 拖动</div></div>
         </div>
     </div>
-</div>
 
-<script>
-    (function() {
-        // ================= 新增 IndexedDB 视频壁纸持久化模块 (来自003) =================
-        const DB_NAME = 'CUI4_WallpaperDB';
-        const STORE_NAME = 'videoWallpaper';
-        let dbInstance = null;
-        let currentVideoBlobUrl = null;  // 用于及时释放资源
+    <!-- 功能详细面板 (用于倒计时、秒表、Advance) -->
+    <div class="func-detail-overlay" id="funcDetailOverlay">
+        <div class="detail-header">
+            <h4 id="detailTitle">功能</h4>
+            <button class="back-func" id="backFromDetail">&times;</button>
+        </div>
+        <div class="func-detail-content" id="detailContent"></div>
+    </div>
 
-        function openIndexedDB() {
-            return new Promise((resolve, reject) => {
-                if (dbInstance && dbInstance.name === DB_NAME) {
-                    resolve(dbInstance);
+    <!-- 全屏覆盖 (用于倒计时、秒表、计算器) -->
+    <div class="fullscreen-overlay" id="fullscreenOverlay">
+        <div class="fs-content" id="fsContent">
+            <div class="fs-label" id="fsLabel">倒计时</div>
+            <div class="fs-display" id="fsDisplay">00:00:00</div>
+            <!-- 计算器容器 -->
+            <div id="fsCalculatorContainer">
+                <div class="calc-display" id="fsCalcDisplay">0</div>
+                <div class="calc-grid" id="fsCalcGrid"></div>
+            </div>
+        </div>
+        <button class="fs-exit" id="fsExitBtn"><i class="fas fa-compress-alt"></i> 退出全屏</button>
+    </div>
+
+    <script>
+        (function() {
+            // ================= IndexedDB 视频壁纸 =================
+            const DB_NAME = 'CUI4_WallpaperDB';
+            const STORE_NAME = 'videoWallpaper';
+            let dbInstance = null;
+            let currentVideoBlobUrl = null;
+
+            function openIndexedDB() {
+                return new Promise((resolve, reject) => {
+                    if (dbInstance && dbInstance.name === DB_NAME) { resolve(dbInstance); return; }
+                    const request = indexedDB.open(DB_NAME, 1);
+                    request.onupgradeneeded = (e) => {
+                        const db = e.target.result;
+                        if (!db.objectStoreNames.contains(STORE_NAME)) {
+                            db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+                        }
+                    };
+                    request.onsuccess = (e) => { dbInstance = e.target.result;
+                        resolve(dbInstance); };
+                    request.onerror = () => reject(request.error);
+                });
+            }
+
+            async function saveVideoBlobToDB(blob) {
+                if (!blob) return;
+                const db = await openIndexedDB();
+                return new Promise((resolve, reject) => {
+                    const tx = db.transaction(STORE_NAME, 'readwrite');
+                    const store = tx.objectStore(STORE_NAME);
+                    const record = { id: 'currentWallpaperVideo', blob: blob, timestamp: Date.now() };
+                    const request = store.put(record);
+                    request.onsuccess = () => resolve();
+                    request.onerror = () => reject(request.error);
+                });
+            }
+
+            async function getVideoBlobFromDB() {
+                const db = await openIndexedDB();
+                return new Promise((resolve) => {
+                    const tx = db.transaction(STORE_NAME, 'readonly');
+                    const store = tx.objectStore(STORE_NAME);
+                    const request = store.get('currentWallpaperVideo');
+                    request.onsuccess = () => { resolve(request.result ? request.result.blob : null); };
+                    request.onerror = () => resolve(null);
+                });
+            }
+
+            async function deleteVideoBlobFromDB() {
+                const db = await openIndexedDB();
+                return new Promise((resolve) => {
+                    const tx = db.transaction(STORE_NAME, 'readwrite');
+                    const store = tx.objectStore(STORE_NAME);
+                    const req = store.delete('currentWallpaperVideo');
+                    req.onsuccess = () => resolve();
+                    req.onerror = () => resolve();
+                });
+            }
+
+            function revokeCurrentVideoUrl() {
+                if (currentVideoBlobUrl) { URL.revokeObjectURL(currentVideoBlobUrl);
+                    currentVideoBlobUrl = null; }
+            }
+
+            async function applyVideoWallpaperFromBlob(blob) {
+                if (!blob) return false;
+                revokeCurrentVideoUrl();
+                const url = URL.createObjectURL(blob);
+                currentVideoBlobUrl = url;
+                const bgVideo = document.getElementById('bgVideo');
+                const bgImageDiv = document.getElementById('bgImage');
+                const defaultBgText = document.getElementById('defaultBgText');
+                bgVideo.pause();
+                bgVideo.src = url;
+                bgVideo.style.display = 'block';
+                bgImageDiv.style.display = 'none';
+                defaultBgText.style.display = 'none';
+                const soundEnabled = prefs.wallpaperSoundEnabled;
+                bgVideo.muted = !soundEnabled;
+                bgVideo.volume = (prefs.volume || 70) / 100;
+                bgVideo.load();
+                try { await bgVideo.play(); } catch (e) { console.warn("视频自动播放受限", e); }
+                prefs.wallpaperType = 'video';
+                prefs.wallpaperData = null;
+                savePrefs();
+                return true;
+            }
+
+            async function restoreVideoWallpaper() {
+                const blob = await getVideoBlobFromDB();
+                if (blob && prefs.wallpaperType === 'video') {
+                    await applyVideoWallpaperFromBlob(blob);
+                } else if (!blob && prefs.wallpaperType === 'video') {
+                    resetToDefaultWallpaper();
+                } else if (prefs.wallpaperType !== 'video') {
+                    const bgVideo = document.getElementById('bgVideo');
+                    bgVideo.style.display = 'none';
+                    bgVideo.pause();
+                    revokeCurrentVideoUrl();
+                }
+            }
+
+            // ================= 数据 =================
+            const locationData = {
+                "中国": { "北京市": ["东城区", "西城区", "朝阳区", "海淀区"], "上海市": ["黄浦区", "徐汇区", "静安区", "浦东新区"],
+                    "广东省": ["广州市", "深圳市", "珠海市", "佛山市"], "广西壮族自治区": ["南宁市", "柳州市", "桂林市", "北海市"],
+                    "江苏省": ["南京市", "苏州市", "无锡市", "常州市"], "浙江省": ["杭州市", "宁波市", "温州市", "嘉兴市"] },
+                "美国": { "California": ["Los Angeles", "San Francisco", "San Diego"], "New York": ["New York City",
+                        "Buffalo", "Albany"
+                    ], "Texas": ["Houston", "Austin", "Dallas"] },
+                "日本": { "东京都": ["新宿区", "涩谷区", "千代田区"], "大阪府": ["大阪市", "堺市", "东大阪市"] },
+                "英国": { "England": ["London", "Manchester", "Liverpool"], "Scotland": ["Edinburgh", "Glasgow"] }
+            };
+            const countries = ["中国", "美国", "日本", "英国"];
+            const STORAGE = 'cui4_user_prefs';
+
+            let prefs = {
+                themeMode: 'auto',
+                userName: 'USER',
+                wallpaperType: 'default',
+                wallpaperData: null,
+                brightness: 100,
+                volume: 70,
+                locationCountry: "中国",
+                locationState: "广西壮族自治区",
+                locationCity: "南宁市",
+                wallpaperSoundEnabled: false,
+                pinWidgets: false,
+                dragWidgets: false,
+                准时提醒: false
+            };
+            let searchHistory = JSON.parse(localStorage.getItem('cui4_search_history') || '[]');
+            let taskItems = [];
+
+            // ================= DOM =================
+            const clockEl = document.getElementById('clockDisplay');
+            const dateEl = document.getElementById('dateDisplay');
+            const greetingEl = document.getElementById('greetingText');
+            const locationText = document.getElementById('locationText');
+            const weatherTextSpan = document.getElementById('weatherText');
+            const tempTextSpan = document.getElementById('tempText');
+            const searchInput = document.getElementById('searchInput');
+            const searchConfirmBtn = document.getElementById('searchConfirmBtn');
+            const historyPanel = document.getElementById('historyPanel');
+            const settingsTrigger = document.getElementById('settingsTrigger');
+            const settingsPanel = document.getElementById('settingsPanel');
+            const animGear = document.getElementById('animGear');
+            const closeSettingsBtn = document.getElementById('closeSettingsBtn');
+            const brightnessSlider = document.getElementById('brightnessSlider');
+            const volumeSlider = document.getElementById('volumeSlider');
+            const usernameInput = document.getElementById('usernameInput');
+            const countrySelect = document.getElementById('countrySelect');
+            const stateSelect = document.getElementById('stateSelect');
+            const citySelect = document.getElementById('citySelect');
+            const applyLocationBtn = document.getElementById('applyLocationBtn');
+            const resetWallpaperBtn = document.getElementById('resetWallpaperBtn');
+            const wallpaperUpload = document.getElementById('wallpaperUpload');
+            const globalFileImport = document.getElementById('globalFileImport');
+            const wallpaperSoundToggle = document.getElementById('wallpaperSoundToggle');
+            const taskPanel = document.getElementById('taskPanel');
+            const taskListDiv = document.getElementById('taskList');
+            const closeTaskPanelBtn = document.getElementById('closeTaskPanelBtn');
+            const openTaskViewBtn = document.getElementById('openTaskViewBtn');
+            const clearAllTasksBtn = document.getElementById('clearAllTasksBtn');
+            const clearAllHistoryBtn = document.getElementById('clearAllHistoryBtn');
+            const bgImageDiv = document.getElementById('bgImage');
+            const bgVideo = document.getElementById('bgVideo');
+            const defaultBgTextEl = document.getElementById('defaultBgText');
+            const brightnessMask = document.getElementById('brightnessMask');
+            const fixedWidgets = document.getElementById('fixedWidgets');
+            const openFuncPanelBtn = document.getElementById('openFuncPanelBtn');
+            const funcPanel = document.getElementById('funcPanel');
+            const closeFuncPanelBtn = document.getElementById('closeFuncPanelBtn');
+            const funcCountdownEl = document.getElementById('funcCountdown');
+            const funcGrid = document.getElementById('funcGrid');
+            const funcDetailOverlay = document.getElementById('funcDetailOverlay');
+            const detailTitle = document.getElementById('detailTitle');
+            const detailContent = document.getElementById('detailContent');
+            const backFromDetail = document.getElementById('backFromDetail');
+            const fullscreenOverlay = document.getElementById('fullscreenOverlay');
+            const fsDisplay = document.getElementById('fsDisplay');
+            const fsLabel = document.getElementById('fsLabel');
+            const fsExitBtn = document.getElementById('fsExitBtn');
+            const fsCalcContainer = document.getElementById('fsCalculatorContainer');
+            const fsCalcDisplay = document.getElementById('fsCalcDisplay');
+            const fsCalcGrid = document.getElementById('fsCalcGrid');
+
+            // ================= 倒计时类 =================
+            class CountdownTimer {
+                constructor() {
+                    this.remaining = 0;
+                    this.total = 0;
+                    this.running = false;
+                    this.interval = null;
+                    this.onTick = null;
+                    this.onComplete = null;
+                }
+                start(seconds) {
+                    if (this.running) return;
+                    if (seconds !== undefined) { this.remaining = seconds;
+                        this.total = seconds; }
+                    if (this.remaining <= 0) return;
+                    this.running = true;
+                    this.interval = setInterval(() => {
+                        this.remaining--;
+                        if (this.onTick) this.onTick(this.remaining);
+                        if (this.remaining <= 0) {
+                            this.stop();
+                            if (this.onComplete) this.onComplete();
+                        }
+                    }, 1000);
+                }
+                stop() {
+                    this.running = false;
+                    if (this.interval) { clearInterval(this.interval);
+                        this.interval = null; }
+                }
+                reset(seconds) {
+                    this.stop();
+                    this.remaining = seconds || 0;
+                    this.total = this.remaining;
+                    if (this.onTick) this.onTick(this.remaining);
+                }
+                getRemaining() { return this.remaining; }
+                isRunning() { return this.running; }
+            }
+
+            // ================= 秒表类 =================
+            class Stopwatch {
+                constructor() {
+                    this.ms = 0;
+                    this.running = false;
+                    this.interval = null;
+                    this.onTick = null;
+                }
+                start() {
+                    if (this.running) return;
+                    this.running = true;
+                    const startTime = performance.now() - this.ms;
+                    this.interval = setInterval(() => {
+                        this.ms = performance.now() - startTime;
+                        if (this.onTick) this.onTick(this.ms);
+                    }, 10);
+                }
+                pause() {
+                    this.running = false;
+                    if (this.interval) { clearInterval(this.interval);
+                        this.interval = null; }
+                }
+                reset() {
+                    this.pause();
+                    this.ms = 0;
+                    if (this.onTick) this.onTick(0);
+                }
+                getMs() { return this.ms; }
+                isRunning() { return this.running; }
+            }
+
+            // ================= 音效 =================
+            let audioCtx = null;
+            let currentVolumePercent = prefs.volume;
+
+            function getAudioContext() {
+                if (!audioCtx) { audioCtx = new(window.AudioContext || window.webkitAudioContext)(); }
+                return audioCtx;
+            }
+
+            function playFeedbackSound(volOverride) {
+                try {
+                    const ctx = getAudioContext();
+                    const now = ctx.currentTime;
+                    const gainNode = ctx.createGain();
+                    let volGain = ((volOverride !== undefined ? volOverride : currentVolumePercent) / 100) * 0.35;
+                    if (volGain < 0.02) volGain = 0.02;
+                    gainNode.gain.setValueAtTime(volGain, now);
+                    gainNode.gain.exponentialRampToValueAtTime(0.0001, now + 0.4);
+                    gainNode.connect(ctx.destination);
+                    const osc1 = ctx.createOscillator();
+                    osc1.type = 'sine';
+                    osc1.frequency.value = 880;
+                    osc1.connect(gainNode);
+                    osc1.start(now);
+                    osc1.stop(now + 0.25);
+                    const osc2 = ctx.createOscillator();
+                    osc2.type = 'sine';
+                    osc2.frequency.value = 1760;
+                    osc2.connect(gainNode);
+                    osc2.start(now + 0.02);
+                    osc2.stop(now + 0.2);
+                    ctx.resume();
+                } catch (e) { console.warn("反馈音失败", e); }
+            }
+
+            function playDoubleBeep() {
+                setTimeout(() => playFeedbackSound(), 50);
+                setTimeout(() => playFeedbackSound(), 350);
+            }
+
+            function applyVolumeToMedia(vol) {
+                currentVolumePercent = vol;
+                const volDecimal = vol / 100;
+                if (bgVideo && !bgVideo.muted) bgVideo.volume = volDecimal;
+                document.querySelectorAll('audio, video').forEach(media => {
+                    if (media !== bgVideo || !bgVideo.muted) media.volume = volDecimal;
+                });
+            }
+            let volumeFeedbackTimer = null;
+
+            function setVolumeValue(vol, playSound = true) {
+                prefs.volume = Math.min(100, Math.max(0, vol));
+                volumeSlider.value = prefs.volume;
+                applyVolumeToMedia(prefs.volume);
+                savePrefs();
+                if (playSound) {
+                    if (volumeFeedbackTimer) clearTimeout(volumeFeedbackTimer);
+                    volumeFeedbackTimer = setTimeout(() => { playFeedbackSound();
+                        volumeFeedbackTimer = null; }, 500);
+                }
+            }
+
+            // ================= 工具 =================
+            function escapeHtml(str) { return String(str).replace(/[&<>]/g, m => ({ '&': '&amp;', '<': '&lt;',
+                    '>': '&gt;' } [m])); }
+
+            function showToast(msg) {
+                const toast = document.createElement('div');
+                toast.textContent = msg;
+                toast.style.cssText =
+                    'position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:var(--tabs-active, #4a6fa5);color:white;padding:10px 20px;border-radius:30px;z-index:9999;font-size:14px;box-shadow:0 6px 16px rgba(0,0,0,0.2);';
+                document.body.appendChild(toast);
+                setTimeout(() => toast.remove(), 2000);
+            }
+
+            function formatHHMMSS(sec) {
+                const h = Math.floor(sec / 3600);
+                const m = Math.floor((sec % 3600) / 60);
+                const s = Math.floor(sec % 60);
+                return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+            }
+
+            function formatStopwatch(ms) {
+                const totalSec = ms / 1000;
+                const h = Math.floor(totalSec / 3600);
+                const m = Math.floor((totalSec % 3600) / 60);
+                const s = Math.floor(totalSec % 60);
+                const millis = Math.floor(ms % 1000);
+                return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}.${String(millis).padStart(3,'0')}`;
+            }
+
+            function compressImageToMax(file, maxWidth = 1920, maxHeight = 1080, quality = 0.85) {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        const img = new Image();
+                        img.onload = function() {
+                            let width = img.width,
+                                height = img.height;
+                            let needCompress = false;
+                            if (width > maxWidth || height > maxHeight) {
+                                needCompress = true;
+                                const ratio = Math.min(maxWidth / width, maxHeight / height);
+                                width = Math.floor(width * ratio);
+                                height = Math.floor(height * ratio);
+                            }
+                            if (!needCompress) { resolve(e.target.result); return; }
+                            const canvas = document.createElement('canvas');
+                            canvas.width = width;
+                            canvas.height = height;
+                            const ctx = canvas.getContext('2d');
+                            ctx.drawImage(img, 0, 0, width, height);
+                            resolve(canvas.toDataURL('image/jpeg', quality));
+                        };
+                        img.onerror = () => reject(new Error('图片加载失败'));
+                        img.src = e.target.result;
+                    };
+                    reader.onerror = () => reject(new Error('文件读取失败'));
+                    reader.readAsDataURL(file);
+                });
+            }
+
+            // ================= 壁纸 =================
+            async function resetToDefaultWallpaper() {
+                revokeCurrentVideoUrl();
+                bgVideo.pause();
+                bgVideo.style.display = 'none';
+                bgVideo.src = '';
+                bgVideo.load();
+                bgImageDiv.style.display = 'none';
+                defaultBgTextEl.style.display = 'block';
+                bgImageDiv.style.backgroundImage = '';
+                prefs.wallpaperType = 'default';
+                prefs.wallpaperData = null;
+                await deleteVideoBlobFromDB();
+                savePrefs();
+                showToast('已恢复默认壁纸');
+            }
+
+            function setWallpaperImageFromDataURL(dataUrl) {
+                revokeCurrentVideoUrl();
+                bgVideo.pause();
+                bgVideo.style.display = 'none';
+                bgVideo.src = '';
+                bgImageDiv.style.display = 'block';
+                bgImageDiv.style.backgroundImage = `url(${dataUrl})`;
+                defaultBgTextEl.style.display = 'none';
+                prefs.wallpaperType = 'image';
+                prefs.wallpaperData = dataUrl;
+                deleteVideoBlobFromDB().catch(console.warn);
+                savePrefs();
+                showToast('壁纸已更换');
+            }
+
+            async function handleWallpaperFile(file) {
+                if (!file) return;
+                if (file.type.startsWith('image/')) {
+                    try {
+                        const compressedDataUrl = await compressImageToMax(file, 1920, 1080, 0.85);
+                        setWallpaperImageFromDataURL(compressedDataUrl);
+                    } catch (err) {
+                        console.error(err);
+                        const reader = new FileReader();
+                        reader.onload = e => setWallpaperImageFromDataURL(e.target.result);
+                        reader.readAsDataURL(file);
+                    }
+                    wallpaperUpload.value = '';
+                } else if (file.type === 'video/mp4') {
+                    const blob = file.slice(0, file.size, file.type);
+                    await saveVideoBlobToDB(blob);
+                    await applyVideoWallpaperFromBlob(blob);
+                    showToast('视频壁纸已保存 (刷新后仍然存在)');
+                    wallpaperUpload.value = '';
+                } else {
+                    alert('仅支持jpg/png/mp4');
+                    wallpaperUpload.value = '';
+                }
+            }
+
+            function setWallpaperSound(enabled) {
+                prefs.wallpaperSoundEnabled = enabled;
+                if (prefs.wallpaperType === 'video') {
+                    bgVideo.muted = !enabled;
+                    if (!bgVideo.muted) bgVideo.volume = currentVolumePercent / 100;
+                }
+                wallpaperSoundToggle.classList.toggle('active', enabled);
+                savePrefs();
+            }
+
+            function applyBrightness(val) { brightnessMask.style.backgroundColor = `rgba(0,0,0,${(100-val)/100})`; }
+
+            // ================= 功能栏 =================
+            let funcCountdownTimer = null;
+            let funcRemaining = 12;
+            let funcPanelOpen = false;
+            let currentDetailFunc = null;
+            let nonRealTimer = null;
+            let nonRealRemaining = 11;
+
+            function openFuncPanel() {
+                if (funcPanelOpen) return;
+                funcPanel.classList.add('open');
+                funcPanelOpen = true;
+                startFuncCountdown();
+                if (settingsPanel.classList.contains('open')) closeSettings();
+                if (taskPanel.classList.contains('open')) closeTaskPanel();
+                if (funcDetailOverlay.classList.contains('open')) closeDetail();
+                if (fullscreenOverlay.classList.contains('active')) exitFullscreen();
+            }
+
+            function closeFuncPanel() {
+                funcPanel.classList.remove('open');
+                funcPanelOpen = false;
+                stopFuncCountdown();
+                if (funcDetailOverlay.classList.contains('open')) closeDetail();
+                stopNonRealTimer();
+                if (fullscreenOverlay.classList.contains('active')) exitFullscreen();
+            }
+
+            function startFuncCountdown() {
+                stopFuncCountdown();
+                funcRemaining = 12;
+                updateFuncBadge();
+                funcCountdownTimer = setInterval(() => {
+                    funcRemaining--;
+                    updateFuncBadge();
+                    if (funcRemaining <= 0) {
+                        closeFuncPanel();
+                    }
+                }, 1000);
+            }
+
+            function stopFuncCountdown() {
+                if (funcCountdownTimer) { clearInterval(funcCountdownTimer);
+                    funcCountdownTimer = null; }
+            }
+
+            function resetFuncCountdown() {
+                if (!funcPanelOpen) return;
+                stopFuncCountdown();
+                funcRemaining = 12;
+                updateFuncBadge();
+                funcCountdownTimer = setInterval(() => {
+                    funcRemaining--;
+                    updateFuncBadge();
+                    if (funcRemaining <= 0) { closeFuncPanel(); }
+                }, 1000);
+            }
+
+            function updateFuncBadge() {
+                if (funcCountdownEl) funcCountdownEl.innerText = `${funcRemaining}s`;
+            }
+
+            function startNonRealTimer() {
+                stopNonRealTimer();
+                nonRealRemaining = 11;
+                nonRealTimer = setInterval(() => {
+                    nonRealRemaining--;
+                    if (nonRealRemaining <= 0) {
+                        stopNonRealTimer();
+                        if (funcDetailOverlay.classList.contains('open')) {
+                            closeDetail();
+                            if (funcPanelOpen) startFuncCountdown();
+                        }
+                    }
+                }, 1000);
+            }
+
+            function stopNonRealTimer() {
+                if (nonRealTimer) { clearInterval(nonRealTimer);
+                    nonRealTimer = null; }
+            }
+
+            function resetNonRealTimer() {
+                if (!funcDetailOverlay.classList.contains('open')) return;
+                if (currentDetailFunc === 'advance') {
+                    stopNonRealTimer();
+                    nonRealRemaining = 11;
+                    nonRealTimer = setInterval(() => {
+                        nonRealRemaining--;
+                        if (nonRealRemaining <= 0) {
+                            stopNonRealTimer();
+                            if (funcDetailOverlay.classList.contains('open')) {
+                                closeDetail();
+                                if (funcPanelOpen) startFuncCountdown();
+                            }
+                        }
+                    }, 1000);
+                }
+            }
+
+            function openDetail(funcName) {
+                if (funcName === 'calculator') {
+                    // 计算器直接全屏
+                    enterFullscreen('calculator');
                     return;
                 }
-                const request = indexedDB.open(DB_NAME, 1);
-                request.onupgradeneeded = (e) => {
-                    const db = e.target.result;
-                    if (!db.objectStoreNames.contains(STORE_NAME)) {
-                        db.createObjectStore(STORE_NAME, { keyPath: 'id' });
-                    }
-                };
-                request.onsuccess = (e) => {
-                    dbInstance = e.target.result;
-                    resolve(dbInstance);
-                };
-                request.onerror = () => reject(request.error);
-            });
-        }
-
-        async function saveVideoBlobToDB(blob) {
-            if (!blob) return;
-            const db = await openIndexedDB();
-            return new Promise((resolve, reject) => {
-                const tx = db.transaction(STORE_NAME, 'readwrite');
-                const store = tx.objectStore(STORE_NAME);
-                const record = { id: 'currentWallpaperVideo', blob: blob, timestamp: Date.now() };
-                const request = store.put(record);
-                request.onsuccess = () => resolve();
-                request.onerror = () => reject(request.error);
-            });
-        }
-
-        async function getVideoBlobFromDB() {
-            const db = await openIndexedDB();
-            return new Promise((resolve) => {
-                const tx = db.transaction(STORE_NAME, 'readonly');
-                const store = tx.objectStore(STORE_NAME);
-                const request = store.get('currentWallpaperVideo');
-                request.onsuccess = () => {
-                    resolve(request.result ? request.result.blob : null);
-                };
-                request.onerror = () => resolve(null);
-            });
-        }
-
-        async function deleteVideoBlobFromDB() {
-            const db = await openIndexedDB();
-            return new Promise((resolve) => {
-                const tx = db.transaction(STORE_NAME, 'readwrite');
-                const store = tx.objectStore(STORE_NAME);
-                const req = store.delete('currentWallpaperVideo');
-                req.onsuccess = () => resolve();
-                req.onerror = () => resolve();
-            });
-        }
-
-        function revokeCurrentVideoUrl() {
-            if (currentVideoBlobUrl) {
-                URL.revokeObjectURL(currentVideoBlobUrl);
-                currentVideoBlobUrl = null;
-            }
-        }
-
-        async function applyVideoWallpaperFromBlob(blob) {
-            if (!blob) return false;
-            revokeCurrentVideoUrl();
-            const url = URL.createObjectURL(blob);
-            currentVideoBlobUrl = url;
-            const bgVideo = document.getElementById('bgVideo');
-            const bgImageDiv = document.getElementById('bgImage');
-            const defaultBgText = document.getElementById('defaultBgText');
-            bgVideo.pause();
-            bgVideo.src = url;
-            bgVideo.style.display = 'block';
-            bgImageDiv.style.display = 'none';
-            defaultBgText.style.display = 'none';
-            const soundEnabled = prefs.wallpaperSoundEnabled;
-            bgVideo.muted = !soundEnabled;
-            bgVideo.volume = (prefs.volume || 70) / 100;
-            bgVideo.load();
-            try {
-                await bgVideo.play();
-            } catch(e) { console.warn("视频自动播放受限", e); }
-            prefs.wallpaperType = 'video';
-            prefs.wallpaperData = null;
-            savePrefs();
-            return true;
-        }
-
-        async function restoreVideoWallpaper() {
-            const blob = await getVideoBlobFromDB();
-            if (blob && prefs.wallpaperType === 'video') {
-                await applyVideoWallpaperFromBlob(blob);
-            } else if (!blob && prefs.wallpaperType === 'video') {
-                resetToDefaultWallpaper();
-            } else if (prefs.wallpaperType !== 'video') {
-                const bgVideo = document.getElementById('bgVideo');
-                bgVideo.style.display = 'none';
-                bgVideo.pause();
-                revokeCurrentVideoUrl();
-            }
-        }
-        // ================= 原有功能 (保留017全部) =================
-        const locationData = {
-            "中国": {
-                "北京市": ["东城区", "西城区", "朝阳区", "海淀区"],
-                "上海市": ["黄浦区", "徐汇区", "静安区", "浦东新区"],
-                "广东省": ["广州市", "深圳市", "珠海市", "佛山市"],
-                "广西壮族自治区": ["南宁市", "柳州市", "桂林市", "北海市"],
-                "江苏省": ["南京市", "苏州市", "无锡市", "常州市"],
-                "浙江省": ["杭州市", "宁波市", "温州市", "嘉兴市"]
-            },
-            "美国": {
-                "California": ["Los Angeles", "San Francisco", "San Diego"],
-                "New York": ["New York City", "Buffalo", "Albany"],
-                "Texas": ["Houston", "Austin", "Dallas"]
-            },
-            "日本": {
-                "东京都": ["新宿区", "涩谷区", "千代田区"],
-                "大阪府": ["大阪市", "堺市", "东大阪市"]
-            },
-            "英国": {
-                "England": ["London", "Manchester", "Liverpool"],
-                "Scotland": ["Edinburgh", "Glasgow"]
-            }
-        };
-        const countries = ["中国", "美国", "日本", "英国"];
-        const STORAGE = 'cui4_user_prefs';
-
-        let prefs = {
-            themeMode: 'auto', userName: 'USER', wallpaperType: 'default', wallpaperData: null,
-            brightness: 100, volume: 70, locationCountry: "中国", locationState: "广西壮族自治区",
-            locationCity: "南宁市", wallpaperSoundEnabled: false
-        };
-        let searchHistory = JSON.parse(localStorage.getItem('cui4_search_history') || '[]');
-        let taskItems = [];
-
-        // DOM 元素
-        const clockEl = document.getElementById('clockDisplay');
-        const dateEl = document.getElementById('dateDisplay');
-        const greetingEl = document.getElementById('greetingText');
-        const locationText = document.getElementById('locationText');
-        const weatherTextSpan = document.getElementById('weatherText');
-        const tempTextSpan = document.getElementById('tempText');
-        const searchInput = document.getElementById('searchInput');
-        const searchConfirmBtn = document.getElementById('searchConfirmBtn');
-        const historyPanel = document.getElementById('historyPanel');
-        const settingsTrigger = document.getElementById('settingsTrigger');
-        const settingsPanel = document.getElementById('settingsPanel');
-        const animGear = document.getElementById('animGear');
-        const closeSettingsBtn = document.getElementById('closeSettingsBtn');
-        const brightnessSlider = document.getElementById('brightnessSlider');
-        const volumeSlider = document.getElementById('volumeSlider');
-        const usernameInput = document.getElementById('usernameInput');
-        const countrySelect = document.getElementById('countrySelect');
-        const stateSelect = document.getElementById('stateSelect');
-        const citySelect = document.getElementById('citySelect');
-        const applyLocationBtn = document.getElementById('applyLocationBtn');
-        const resetWallpaperBtn = document.getElementById('resetWallpaperBtn');
-        const wallpaperUpload = document.getElementById('wallpaperUpload');
-        const globalFileImport = document.getElementById('globalFileImport');
-        const wallpaperSoundToggle = document.getElementById('wallpaperSoundToggle');
-        const taskPanel = document.getElementById('taskPanel');
-        const taskListDiv = document.getElementById('taskList');
-        const closeTaskPanelBtn = document.getElementById('closeTaskPanelBtn');
-        const openTaskViewBtn = document.getElementById('openTaskViewBtn');
-        const clearAllTasksBtn = document.getElementById('clearAllTasksBtn');
-        const clearAllHistoryBtn = document.getElementById('clearAllHistoryBtn');
-        const bgImageDiv = document.getElementById('bgImage');
-        const bgVideo = document.getElementById('bgVideo');
-        const defaultBgTextEl = document.getElementById('defaultBgText');
-        const brightnessMask = document.getElementById('brightnessMask');
-
-        // ----- 倒计时管理器 (24秒) -----
-        class Countdown {
-            constructor(displayEl, onExpire, options = {}) {
-                this.displayEl = displayEl;
-                this.onExpire = onExpire;
-                this.remaining = 24;
-                this.timer = null;
-                this.isPaused = false;
-                this.panelOpen = false;
-                this.options = options;
-                this.updateDisplay();
-            }
-            start(initialRemaining = 24) {
-                this.stop();
-                this.remaining = initialRemaining;
-                this.isPaused = false;
-                this.updateDisplay();
-                if (this.panelOpen && !this.isPaused) {
-                    this.timer = setInterval(() => this.tick(), 1000);
-                }
-            }
-            stop() {
-                if (this.timer) {
-                    clearInterval(this.timer);
-                    this.timer = null;
-                }
-            }
-            tick() {
-                if (this.isPaused) return;
-                if (this.remaining <= 1) {
-                    this.stop();
-                    if (this.panelOpen) this.onExpire();
+                currentDetailFunc = funcName;
+                funcDetailOverlay.classList.add('open');
+                stopFuncCountdown();
+                renderDetail(funcName);
+                detailTitle.innerText = funcName === 'advance' ? 'Advance' :
+                    funcName.charAt(0).toUpperCase() + funcName.slice(1);
+                if (funcName === 'advance') {
+                    startNonRealTimer();
                 } else {
-                    this.remaining--;
+                    stopNonRealTimer();
+                }
+            }
+
+            function closeDetail() {
+                funcDetailOverlay.classList.remove('open');
+                stopNonRealTimer();
+                currentDetailFunc = null;
+                if (funcPanelOpen) startFuncCountdown();
+            }
+
+            function renderDetail(funcName) {
+                detailContent.innerHTML = '';
+                if (funcName === 'countdown') renderCountdownDetail();
+                else if (funcName === 'stopwatch') renderStopwatchDetail();
+                else if (funcName === 'advance') renderAdvanceDetail();
+            }
+
+            // ---- 倒计时 ----
+            const countdownTimer = new CountdownTimer();
+            let cdInputSeconds = 60;
+
+            function renderCountdownDetail() {
+                const div = document.createElement('div');
+                div.style.cssText = 'display:flex;flex-direction:column;gap:16px;flex:1;';
+                const display = document.createElement('div');
+                display.className = 'countdown-display';
+                display.id = 'cdDisplay';
+                display.innerText = formatHHMMSS(cdInputSeconds);
+                const controls = document.createElement('div');
+                controls.className = 'countdown-controls';
+                controls.innerHTML = `
+                    <input type="number" id="cdInput" value="${cdInputSeconds}" min="1" max="86400" step="1">
+                    <button id="cdStartBtn">开始</button>
+                    <button id="cdPauseBtn" class="secondary">暂停</button>
+                    <button id="cdResetBtn" class="secondary">重置</button>
+                `;
+                div.appendChild(display);
+                div.appendChild(controls);
+                display.addEventListener('dblclick', () => enterFullscreen('countdown'));
+                display.addEventListener('touchstart', (e) => {
+                    if (e.touches.length === 1) {
+                        let lastTap = display._lastTap || 0;
+                        let now = Date.now();
+                        if (now - lastTap < 400) { enterFullscreen('countdown'); }
+                        display._lastTap = now;
+                    }
+                });
+                detailContent.appendChild(div);
+
+                const cdInput = document.getElementById('cdInput');
+                const startBtn = document.getElementById('cdStartBtn');
+                const pauseBtn = document.getElementById('cdPauseBtn');
+                const resetBtn = document.getElementById('cdResetBtn');
+
+                const updateDisplay = () => {
+                    const rem = countdownTimer.getRemaining();
+                    document.getElementById('cdDisplay').innerText = formatHHMMSS(rem > 0 ? rem : 0);
+                    updateFixedWidgets();
+                };
+                countdownTimer.onTick = updateDisplay;
+                countdownTimer.onComplete = () => {
+                    playDoubleBeep();
+                    updateDisplay();
+                    updateFixedWidgets();
+                };
+
+                startBtn.addEventListener('click', () => {
+                    const val = parseInt(cdInput.value);
+                    if (val > 0 && !countdownTimer.isRunning()) {
+                        cdInputSeconds = val;
+                        countdownTimer.reset(val);
+                        countdownTimer.start();
+                        updateDisplay();
+                    } else if (countdownTimer.isRunning()) {
+                        const val2 = parseInt(cdInput.value) || cdInputSeconds;
+                        cdInputSeconds = val2;
+                        countdownTimer.reset(val2);
+                        countdownTimer.start();
+                        updateDisplay();
+                    }
+                });
+                pauseBtn.addEventListener('click', () => {
+                    if (countdownTimer.isRunning()) {
+                        countdownTimer.stop();
+                    } else {
+                        const rem = countdownTimer.getRemaining();
+                        if (rem > 0) countdownTimer.start();
+                    }
+                    updateDisplay();
+                });
+                resetBtn.addEventListener('click', () => {
+                    const val = parseInt(cdInput.value) || 60;
+                    cdInputSeconds = val;
+                    countdownTimer.reset(val);
+                    updateDisplay();
+                });
+                countdownTimer.reset(cdInputSeconds);
+                updateDisplay();
+            }
+
+            // ---- 秒表 ----
+            const stopwatch = new Stopwatch();
+
+            function renderStopwatchDetail() {
+                const div = document.createElement('div');
+                div.style.cssText = 'display:flex;flex-direction:column;gap:16px;flex:1;';
+                const display = document.createElement('div');
+                display.className = 'stopwatch-display';
+                display.id = 'swDisplay';
+                display.innerText = '00:00:00.000';
+                const controls = document.createElement('div');
+                controls.className = 'stopwatch-controls';
+                controls.innerHTML = `
+                    <button id="swStartBtn">开始</button>
+                    <button id="swPauseBtn" class="secondary">暂停</button>
+                    <button id="swResetBtn" class="secondary">重置</button>
+                `;
+                div.appendChild(display);
+                div.appendChild(controls);
+                display.addEventListener('dblclick', () => enterFullscreen('stopwatch'));
+                display.addEventListener('touchstart', (e) => {
+                    if (e.touches.length === 1) {
+                        let lastTap = display._lastTap || 0;
+                        let now = Date.now();
+                        if (now - lastTap < 400) { enterFullscreen('stopwatch'); }
+                        display._lastTap = now;
+                    }
+                });
+                detailContent.appendChild(div);
+
+                const updateDisplay = () => {
+                    const ms = stopwatch.getMs();
+                    document.getElementById('swDisplay').innerText = formatStopwatch(ms);
+                    updateFixedWidgets();
+                };
+                stopwatch.onTick = updateDisplay;
+
+                document.getElementById('swStartBtn').addEventListener('click', () => { stopwatch.start();
+                    updateDisplay(); });
+                document.getElementById('swPauseBtn').addEventListener('click', () => { stopwatch.pause();
+                    updateDisplay(); });
+                document.getElementById('swResetBtn').addEventListener('click', () => { stopwatch.reset();
+                    updateDisplay(); });
+                updateDisplay();
+            }
+
+            // ---- 计算器 (全屏) ----
+            let calcDisplayStr = '0';
+
+            function renderCalculatorFullscreen() {
+                fsCalcContainer.classList.add('active');
+                fsDisplay.style.display = 'none';
+                fsLabel.style.display = 'none';
+                // 构建计算器按钮
+                fsCalcGrid.innerHTML = '';
+                const buttons = [
+                    ['(', ')', 'C', '⌫', '÷'],
+                    ['7', '8', '9', '×', '√'],
+                    ['4', '5', '6', '-', 'x²'],
+                    ['1', '2', '3', '+', '1/x'],
+                    ['0', '.', '±', '=', '%']
+                ];
+                buttons.forEach(row => {
+                    row.forEach(label => {
+                        const btn = document.createElement('div');
+                        btn.className = 'calc-btn';
+                        if (['÷', '×', '-', '+', '√', 'x²', '1/x', '%'].includes(label)) btn.classList.add('op');
+                        if (label === '=') btn.classList.add('eq');
+                        if (label === '0') btn.classList.add('span2');
+                        if (['(', ')', 'C', '⌫'].includes(label)) btn.classList.add('fn');
+                        btn.innerText = label;
+                        btn.dataset.label = label;
+                        btn.addEventListener('click', () => handleCalcInput(label));
+                        btn.addEventListener('touchstart', (e) => { e.preventDefault();
+                            handleCalcInput(label); }, { passive: false });
+                        fsCalcGrid.appendChild(btn);
+                    });
+                });
+                calcDisplayStr = '0';
+                updateCalcDisplay();
+                // 键盘监听
+                document.addEventListener('keydown', calcKeyHandler);
+            }
+
+            function handleCalcInput(label) {
+                if (label === 'C') { calcDisplayStr = '0';
+                    updateCalcDisplay(); return; }
+                if (label === '⌫') { calcDisplayStr = calcDisplayStr.slice(0, -1) || '0';
+                    updateCalcDisplay(); return; }
+                if (label === '=') {
+                    try {
+                        let expr = calcDisplayStr.replace(/×/g, '*').replace(/÷/g, '/').replace(/x²/g, '**2').replace(
+                            /√\(/g, 'Math.sqrt(').replace(/1\/x/g, '1/');
+                        const result = Function('"use strict"; return (' + expr + ')')();
+                        if (typeof result === 'number' && !isNaN(result) && isFinite(result)) {
+                            calcDisplayStr = String(parseFloat(result.toFixed(10)));
+                        } else { calcDisplayStr = '错误'; }
+                        updateCalcDisplay();
+                    } catch (e) { calcDisplayStr = '错误';
+                        updateCalcDisplay(); }
+                    return;
+                }
+                if (label === '±') {
+                    if (calcDisplayStr.startsWith('-')) calcDisplayStr = calcDisplayStr.slice(1);
+                    else if (calcDisplayStr !== '0') calcDisplayStr = '-' + calcDisplayStr;
+                    updateCalcDisplay();
+                    return;
+                }
+                if (label === '√') {
+                    try {
+                        const val = parseFloat(calcDisplayStr);
+                        if (!isNaN(val) && val >= 0) calcDisplayStr = String(Math.sqrt(val));
+                        else calcDisplayStr = '错误';
+                        updateCalcDisplay();
+                    } catch (e) { calcDisplayStr = '错误';
+                        updateCalcDisplay(); }
+                    return;
+                }
+                if (label === 'x²') {
+                    try {
+                        const val = parseFloat(calcDisplayStr);
+                        if (!isNaN(val)) calcDisplayStr = String(val * val);
+                        updateCalcDisplay();
+                    } catch (e) {}
+                    return;
+                }
+                if (label === '1/x') {
+                    try {
+                        const val = parseFloat(calcDisplayStr);
+                        if (!isNaN(val) && val !== 0) calcDisplayStr = String(1 / val);
+                        else calcDisplayStr = '错误';
+                        updateCalcDisplay();
+                    } catch (e) {}
+                    return;
+                }
+                if (label === '%') {
+                    try {
+                        const val = parseFloat(calcDisplayStr);
+                        if (!isNaN(val)) calcDisplayStr = String(val / 100);
+                        updateCalcDisplay();
+                    } catch (e) {}
+                    return;
+                }
+                if (calcDisplayStr === '0' && label !== '.') calcDisplayStr = label;
+                else calcDisplayStr += label;
+                updateCalcDisplay();
+            }
+
+            function updateCalcDisplay() {
+                fsCalcDisplay.innerText = calcDisplayStr || '0';
+            }
+
+            function calcKeyHandler(e) {
+                if (!fullscreenOverlay.classList.contains('active')) return;
+                if (fsCalcContainer.style.display !== 'flex') return;
+                const key = e.key;
+                if (key >= '0' && key <= '9') { handleCalcInput(key);
+                    e.preventDefault(); return; }
+                if (key === '.') { handleCalcInput('.');
+                    e.preventDefault(); return; }
+                if (key === '+') { handleCalcInput('+');
+                    e.preventDefault(); return; }
+                if (key === '-') { handleCalcInput('-');
+                    e.preventDefault(); return; }
+                if (key === '*') { handleCalcInput('×');
+                    e.preventDefault(); return; }
+                if (key === '/') { handleCalcInput('÷');
+                    e.preventDefault(); return; }
+                if (key === 'Enter' || key === '=') { handleCalcInput('=');
+                    e.preventDefault(); return; }
+                if (key === 'Backspace') { handleCalcInput('⌫');
+                    e.preventDefault(); return; }
+                if (key === 'Escape' || key === 'c' || key === 'C') { handleCalcInput('C');
+                    e.preventDefault(); return; }
+                if (key === '(') { handleCalcInput('(');
+                    e.preventDefault(); return; }
+                if (key === ')') { handleCalcInput(')');
+                    e.preventDefault(); return; }
+                if (key === '%') { handleCalcInput('%');
+                    e.preventDefault(); return; }
+                // Delete 键关闭全屏计算器
+                if (key === 'Delete') {
+                    e.preventDefault();
+                    exitFullscreen();
+                }
+            }
+
+            // ---- Advance ----
+            function renderAdvanceDetail() {
+                const div = document.createElement('div');
+                div.className = 'advance-settings';
+                const alarmRow = document.createElement('div');
+                alarmRow.className = 'adv-row';
+                alarmRow.innerHTML = `
+                    <div><div class="adv-label">准时提醒</div><div class="adv-desc">整点（如 6:00, 13:00）播放提示音</div></div>
+                    <div class="adv-control"><div id="advAlarmToggle" class="toggle-switch ${prefs.准时提醒?'active':''}"></div></div>
+                `;
+                div.appendChild(alarmRow);
+                const pinRow = document.createElement('div');
+                pinRow.className = 'adv-row';
+                pinRow.innerHTML = `
+                    <div><div class="adv-label">将功能固定到主页</div><div class="adv-desc">倒计时/秒表实时显示在左上角</div></div>
+                    <div class="adv-control"><div id="advPinToggle" class="toggle-switch ${prefs.pinWidgets?'active':''}"></div></div>
+                `;
+                div.appendChild(pinRow);
+                const dragRow = document.createElement('div');
+                dragRow.className = 'adv-row';
+                dragRow.innerHTML = `
+                    <div><div class="adv-label">可移动的功能项</div><div class="adv-desc">开启后可拖动固定功能卡片</div></div>
+                    <div class="adv-control"><div id="advDragToggle" class="toggle-switch ${prefs.dragWidgets?'active':''}"></div></div>
+                `;
+                div.appendChild(dragRow);
+
+                detailContent.appendChild(div);
+
+                document.getElementById('advAlarmToggle').addEventListener('click', function() {
+                    prefs.准时提醒 = !prefs.准时提醒;
+                    this.classList.toggle('active', prefs.准时提醒);
+                    savePrefs();
+                    showToast(prefs.准时提醒 ? '准时提醒已开启' : '准时提醒已关闭');
+                    resetNonRealTimer();
+                });
+                document.getElementById('advPinToggle').addEventListener('click', function() {
+                    prefs.pinWidgets = !prefs.pinWidgets;
+                    this.classList.toggle('active', prefs.pinWidgets);
+                    savePrefs();
+                    updateFixedWidgets();
+                    if (!prefs.pinWidgets && prefs.dragWidgets) {
+                        prefs.dragWidgets = false;
+                        const dragToggle = document.getElementById('advDragToggle');
+                        if (dragToggle) dragToggle.classList.remove('active');
+                        savePrefs();
+                    }
+                    showToast(prefs.pinWidgets ? '已固定到主页' : '已取消固定');
+                    resetNonRealTimer();
+                });
+                document.getElementById('advDragToggle').addEventListener('click', function() {
+                    if (!prefs.pinWidgets) {
+                        showToast('请先开启「将功能固定到主页」');
+                        return;
+                    }
+                    prefs.dragWidgets = !prefs.dragWidgets;
+                    this.classList.toggle('active', prefs.dragWidgets);
+                    savePrefs();
+                    updateFixedWidgets();
+                    showToast(prefs.dragWidgets ? '可拖动已开启' : '可拖动已关闭');
+                    resetNonRealTimer();
+                });
+            }
+
+            // ================= 整点提醒 =================
+            let lastCheckedHour = -1;
+
+            function checkHourlyAlarm() {
+                if (!prefs.准时提醒) return;
+                const now = new Date();
+                const h = now.getHours();
+                const m = now.getMinutes();
+                const s = now.getSeconds();
+                if (m === 0 && s < 2 && h !== lastCheckedHour) {
+                    lastCheckedHour = h;
+                    playFeedbackSound();
+                    setTimeout(() => playFeedbackSound(), 300);
+                }
+                if (m !== 0) lastCheckedHour = -1;
+            }
+            setInterval(checkHourlyAlarm, 1000);
+
+            // ================= 全屏 =================
+            let fsMode = null;
+            let fsInterval = null;
+
+            function enterFullscreen(mode) {
+                if (fullscreenOverlay.classList.contains('active')) return;
+                fsMode = mode;
+                fullscreenOverlay.classList.add('active');
+                const bg = prefs.wallpaperType === 'image' && prefs.wallpaperData ? `url(${prefs.wallpaperData})` :
+                    'var(--bg-gradient)';
+                fullscreenOverlay.style.background = bg;
+                if (prefs.wallpaperType === 'image' && prefs.wallpaperData) {
+                    fullscreenOverlay.style.backgroundSize = 'cover';
+                    fullscreenOverlay.style.backgroundPosition = 'center';
+                } else {
+                    fullscreenOverlay.style.background = 'var(--bg-gradient)';
+                }
+                // 亮度遮罩
+                const mask = document.createElement('div');
+                mask.style.cssText =
+                    `position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,${(100-prefs.brightness)/100});pointer-events:none;z-index:1;`;
+                const existing = fullscreenOverlay.querySelector('.fs-mask');
+                if (existing) existing.remove();
+                mask.className = 'fs-mask';
+                fullscreenOverlay.insertBefore(mask, fullscreenOverlay.firstChild);
+
+                // 重置显示
+                fsDisplay.style.display = '';
+                fsLabel.style.display = '';
+                fsCalcContainer.classList.remove('active');
+                fsCalcContainer.style.display = 'none';
+                document.removeEventListener('keydown', calcKeyHandler);
+
+                if (mode === 'countdown') {
+                    fsLabel.innerText = '⏳ 倒计时';
+                    const rem = countdownTimer.getRemaining();
+                    fsDisplay.innerText = formatHHMMSS(rem > 0 ? rem : 0);
+                    if (fsInterval) clearInterval(fsInterval);
+                    fsInterval = setInterval(() => {
+                        const r = countdownTimer.getRemaining();
+                        fsDisplay.innerText = formatHHMMSS(r > 0 ? r : 0);
+                    }, 200);
+                } else if (mode === 'stopwatch') {
+                    fsLabel.innerText = '⏱️ 秒表';
+                    fsDisplay.innerText = formatStopwatch(stopwatch.getMs());
+                    if (fsInterval) clearInterval(fsInterval);
+                    fsInterval = setInterval(() => {
+                        fsDisplay.innerText = formatStopwatch(stopwatch.getMs());
+                    }, 20);
+                } else if (mode === 'calculator') {
+                    fsCalcContainer.style.display = 'flex';
+                    renderCalculatorFullscreen();
+                    // 暂停功能栏倒计时
+                    if (funcPanelOpen) stopFuncCountdown();
+                }
+                // 关闭其他面板
+                if (funcDetailOverlay.classList.contains('open')) closeDetail();
+                if (settingsPanel.classList.contains('open')) closeSettings();
+                if (taskPanel.classList.contains('open')) closeTaskPanel();
+                if (funcPanelOpen) {
+                    // 功能栏倒计时已暂停，隐藏功能栏
+                    funcPanel.style.opacity = '0';
+                }
+            }
+
+            function exitFullscreen() {
+                fullscreenOverlay.classList.remove('active');
+                fsMode = null;
+                if (fsInterval) { clearInterval(fsInterval);
+                    fsInterval = null; }
+                const mask = fullscreenOverlay.querySelector('.fs-mask');
+                if (mask) mask.remove();
+                fullscreenOverlay.style.background = '';
+                fullscreenOverlay.style.backgroundSize = '';
+                fullscreenOverlay.style.backgroundPosition = '';
+                fsCalcContainer.style.display = 'none';
+                fsCalcContainer.classList.remove('active');
+                document.removeEventListener('keydown', calcKeyHandler);
+                // 恢复功能栏
+                if (funcPanelOpen) {
+                    funcPanel.style.opacity = '';
+                    startFuncCountdown();
+                }
+                // 如果计算器全屏关闭，回到功能栏
+                if (currentDetailFunc === 'calculator') {
+                    currentDetailFunc = null;
+                }
+            }
+
+            fsExitBtn.addEventListener('click', exitFullscreen);
+            fullscreenOverlay.addEventListener('dblclick', exitFullscreen);
+            fullscreenOverlay.addEventListener('touchstart', (e) => {
+                if (e.touches.length === 1) {
+                    let lastTap = fullscreenOverlay._lastTap || 0;
+                    let now = Date.now();
+                    if (now - lastTap < 400) { exitFullscreen(); }
+                    fullscreenOverlay._lastTap = now;
+                }
+            });
+
+            // ================= 固定到主页 =================
+            function updateFixedWidgets() {
+                if (!prefs.pinWidgets) {
+                    fixedWidgets.innerHTML = '';
+                    return;
+                }
+                let html = '';
+                const cdRem = countdownTimer.getRemaining();
+                html +=
+                    `<div class="fixed-widget" id="fwCountdown" style="cursor:${prefs.dragWidgets?'grab':'default'};"><div class="fw-title">⏳ 倒计时</div><div class="fw-value countdown">${formatHHMMSS(cdRem>0?cdRem:0)}</div></div>`;
+                const swMs = stopwatch.getMs();
+                html +=
+                    `<div class="fixed-widget" id="fwStopwatch" style="cursor:${prefs.dragWidgets?'grab':'default'};"><div class="fw-title">⏱️ 秒表</div><div class="fw-value stopwatch">${formatStopwatch(swMs)}</div></div>`;
+                fixedWidgets.innerHTML = html;
+
+                if (prefs.dragWidgets && prefs.pinWidgets) {
+                    document.querySelectorAll('.fixed-widget').forEach(el => {
+                        el.style.cursor = 'grab';
+                        el.addEventListener('mousedown', startDrag);
+                        el.addEventListener('touchstart', startDragTouch, { passive: false });
+                    });
+                } else {
+                    document.querySelectorAll('.fixed-widget').forEach(el => {
+                        el.style.cursor = 'default';
+                        el.removeEventListener('mousedown', startDrag);
+                        el.removeEventListener('touchstart', startDragTouch);
+                    });
+                }
+            }
+
+            // ---- 拖拽 ----
+            let dragData = null;
+
+            function startDrag(e) {
+                if (!prefs.dragWidgets || !prefs.pinWidgets) return;
+                const el = e.currentTarget;
+                const rect = el.getBoundingClientRect();
+                dragData = {
+                    el: el,
+                    offsetX: e.clientX - rect.left,
+                    offsetY: e.clientY - rect.top,
+                    startX: rect.left,
+                    startY: rect.top
+                };
+                el.classList.add('dragging');
+                document.addEventListener('mousemove', onDragMove);
+                document.addEventListener('mouseup', endDrag);
+                e.preventDefault();
+            }
+
+            function startDragTouch(e) {
+                if (!prefs.dragWidgets || !prefs.pinWidgets) return;
+                const touch = e.touches[0];
+                const el = e.currentTarget;
+                const rect = el.getBoundingClientRect();
+                dragData = {
+                    el: el,
+                    offsetX: touch.clientX - rect.left,
+                    offsetY: touch.clientY - rect.top,
+                    startX: rect.left,
+                    startY: rect.top
+                };
+                el.classList.add('dragging');
+                document.addEventListener('touchmove', onDragMoveTouch, { passive: false });
+                document.addEventListener('touchend', endDragTouch);
+                e.preventDefault();
+            }
+
+            function onDragMove(e) {
+                if (!dragData) return;
+                const el = dragData.el;
+                const x = e.clientX - dragData.offsetX;
+                const y = e.clientY - dragData.offsetY;
+                el.style.position = 'fixed';
+                el.style.left = x + 'px';
+                el.style.top = y + 'px';
+                el.style.transform = 'none';
+                el.style.zIndex = '100';
+            }
+
+            function onDragMoveTouch(e) {
+                if (!dragData) return;
+                const touch = e.touches[0];
+                const el = dragData.el;
+                const x = touch.clientX - dragData.offsetX;
+                const y = touch.clientY - dragData.offsetY;
+                el.style.position = 'fixed';
+                el.style.left = x + 'px';
+                el.style.top = y + 'px';
+                el.style.transform = 'none';
+                el.style.zIndex = '100';
+                e.preventDefault();
+            }
+
+            function endDrag() {
+                if (dragData) {
+                    dragData.el.classList.remove('dragging');
+                    dragData = null;
+                }
+                document.removeEventListener('mousemove', onDragMove);
+                document.removeEventListener('mouseup', endDrag);
+            }
+
+            function endDragTouch() {
+                if (dragData) {
+                    dragData.el.classList.remove('dragging');
+                    dragData = null;
+                }
+                document.removeEventListener('touchmove', onDragMoveTouch);
+                document.removeEventListener('touchend', endDragTouch);
+            }
+
+            // ================= 面板倒计时 =================
+            class PanelCountdown {
+                constructor(displayEl, onExpire, duration) {
+                    this.displayEl = displayEl;
+                    this.onExpire = onExpire;
+                    this.duration = duration;
+                    this.remaining = duration;
+                    this.timer = null;
+                    this.panelOpen = false;
                     this.updateDisplay();
                 }
-            }
-            updateDisplay() {
-                if (this.displayEl) this.displayEl.innerText = `${this.remaining}s`;
-            }
-            reset() {
-                if (!this.panelOpen) return;
-                this.stop();
-                this.remaining = 24;
-                this.isPaused = false;
-                this.updateDisplay();
-                if (this.panelOpen && !this.isPaused) {
-                    this.timer = setInterval(() => this.tick(), 1000);
-                }
-            }
-            pause() {
-                if (!this.isPaused) {
-                    this.isPaused = true;
+                start() {
                     this.stop();
-                }
-            }
-            resume() {
-                if (this.isPaused) {
-                    this.isPaused = false;
-                    if (this.panelOpen && this.remaining > 0) {
-                        this.stop();
+                    this.remaining = this.duration;
+                    this.updateDisplay();
+                    if (this.panelOpen) {
                         this.timer = setInterval(() => this.tick(), 1000);
                     }
                 }
-            }
-            setPanelOpen(open) {
-                this.panelOpen = open;
-                if (open) {
-                    this.reset();
-                } else {
+                stop() { if (this.timer) { clearInterval(this.timer);
+                        this.timer = null; } }
+                tick() {
+                    this.remaining--;
+                    this.updateDisplay();
+                    if (this.remaining <= 0) { this.stop(); if (this.panelOpen) this.onExpire(); }
+                }
+                updateDisplay() { if (this.displayEl) this.displayEl.innerText = `${this.remaining}s`; }
+                reset() {
+                    if (!this.panelOpen) return;
                     this.stop();
+                    this.remaining = this.duration;
+                    this.updateDisplay();
+                    this.timer = setInterval(() => this.tick(), 1000);
+                }
+                setPanelOpen(open) {
+                    this.panelOpen = open;
+                    if (open) { this.reset(); } else { this.stop(); }
                 }
             }
-        }
 
-        let settingsCountdown = null;
-        let taskCountdown = null;
+            let settingsCountdown = new PanelCountdown(document.getElementById('settingsCountdown'), () => closeSettings(),
+            8);
+            let taskCountdown = new PanelCountdown(document.getElementById('taskCountdown'), () => closeTaskPanel(), 15);
 
-        // 监听任务面板内的视频播放状态
-        let playingVideoCount = 0;
-        function updateTaskCountdownPauseByVideo() {
-            if (!taskCountdown) return;
-            if (playingVideoCount > 0) {
-                taskCountdown.pause();
-            } else {
-                taskCountdown.resume();
+            settingsPanel.addEventListener('mousemove', () => settingsCountdown.reset());
+            settingsPanel.addEventListener('click', () => settingsCountdown.reset());
+            settingsPanel.addEventListener('touchstart', () => settingsCountdown.reset());
+            settingsPanel.addEventListener('scroll', () => settingsCountdown.reset());
+            taskPanel.addEventListener('mousemove', () => taskCountdown.reset());
+            taskPanel.addEventListener('click', () => taskCountdown.reset());
+            taskPanel.addEventListener('touchstart', () => taskCountdown.reset());
+            taskPanel.addEventListener('scroll', () => taskCountdown.reset());
+            funcPanel.addEventListener('mousemove', resetFuncCountdown);
+            funcPanel.addEventListener('click', resetFuncCountdown);
+            funcPanel.addEventListener('touchstart', resetFuncCountdown);
+            funcPanel.addEventListener('scroll', resetFuncCountdown);
+            funcDetailOverlay.addEventListener('mousemove', resetNonRealTimer);
+            funcDetailOverlay.addEventListener('click', resetNonRealTimer);
+            funcDetailOverlay.addEventListener('touchstart', resetNonRealTimer);
+            funcDetailOverlay.addEventListener('scroll', resetNonRealTimer);
+
+            // ================= 手势：双指缩放 =================
+            let lastPinchDist = 0;
+
+            function getPinchDist(e) {
+                if (e.touches.length < 2) return 0;
+                const dx = e.touches[0].clientX - e.touches[1].clientX;
+                const dy = e.touches[0].clientY - e.touches[1].clientY;
+                return Math.sqrt(dx * dx + dy * dy);
             }
-        }
-        function bindVideoEvents(video) {
-            if (!video) return;
-            const playHandler = () => {
-                playingVideoCount++;
-                updateTaskCountdownPauseByVideo();
-            };
-            const pauseHandler = () => {
-                playingVideoCount--;
-                if (playingVideoCount < 0) playingVideoCount = 0;
-                updateTaskCountdownPauseByVideo();
-            };
-            video.addEventListener('play', playHandler);
-            video.addEventListener('pause', pauseHandler);
-            video.addEventListener('ended', pauseHandler);
-            video._countdownPlayHandler = playHandler;
-            video._countdownPauseHandler = pauseHandler;
-        }
-        function observeTaskPanelVideos() {
-            const videos = taskPanel.querySelectorAll('video');
-            videos.forEach(vid => {
-                if (!vid._countdownPlayHandler) bindVideoEvents(vid);
-            });
-        }
 
-        // ----- 原功能函数 -----
-        function compressImageToMax(file, maxWidth = 1920, maxHeight = 1080, quality = 0.85) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const img = new Image();
-                    img.onload = function() {
-                        let width = img.width;
-                        let height = img.height;
-                        let needCompress = false;
-                        if (width > maxWidth || height > maxHeight) {
-                            needCompress = true;
-                            const ratio = Math.min(maxWidth / width, maxHeight / height);
-                            width = Math.floor(width * ratio);
-                            height = Math.floor(height * ratio);
-                        }
-                        if (!needCompress) {
-                            resolve(e.target.result);
-                            return;
-                        }
-                        const canvas = document.createElement('canvas');
-                        canvas.width = width;
-                        canvas.height = height;
-                        const ctx = canvas.getContext('2d');
-                        ctx.drawImage(img, 0, 0, width, height);
-                        const compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
-                        resolve(compressedDataUrl);
-                    };
-                    img.onerror = () => reject(new Error('图片加载失败'));
-                    img.src = e.target.result;
-                };
-                reader.onerror = () => reject(new Error('文件读取失败'));
-                reader.readAsDataURL(file);
-            });
-        }
-
-        const overlay = document.getElementById('startupOverlay');
-        if(overlay) { overlay.style.opacity = '0'; setTimeout(() => overlay.remove(), 200); }
-
-        let audioCtx = null;
-        function getAudioContext() {
-            if (!audioCtx) {
-                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            }
-            return audioCtx;
-        }
-        let currentVolumePercent = prefs.volume;
-        function playVolumeFeedback() {
-            try {
-                const ctx = getAudioContext();
-                const now = ctx.currentTime;
-                const gainNode = ctx.createGain();
-                let volGain = (currentVolumePercent / 100) * 0.35;
-                if (volGain < 0.02) volGain = 0.02;
-                gainNode.gain.setValueAtTime(volGain, now);
-                gainNode.gain.exponentialRampToValueAtTime(0.0001, now + 0.4);
-                gainNode.connect(ctx.destination);
-                const osc1 = ctx.createOscillator();
-                osc1.type = 'sine';
-                osc1.frequency.value = 880;
-                osc1.connect(gainNode);
-                osc1.start(now);
-                osc1.stop(now + 0.25);
-                const osc2 = ctx.createOscillator();
-                osc2.type = 'sine';
-                osc2.frequency.value = 1760;
-                osc2.connect(gainNode);
-                osc2.start(now + 0.02);
-                osc2.stop(now + 0.2);
-                ctx.resume();
-            } catch(e) { console.warn("音量反馈音失败", e); }
-        }
-        function applyVolumeToMedia(vol) {
-            currentVolumePercent = vol;
-            const volDecimal = vol / 100;
-            if(bgVideo && !bgVideo.muted) bgVideo.volume = volDecimal;
-            document.querySelectorAll('audio, video').forEach(media => {
-                if(media !== bgVideo || !bgVideo.muted) media.volume = volDecimal;
-            });
-        }
-        let volumeFeedbackTimer = null;
-        function setVolumeValue(vol, playSound = true) {
-            prefs.volume = Math.min(100, Math.max(0, vol));
-            volumeSlider.value = prefs.volume;
-            applyVolumeToMedia(prefs.volume);
-            savePrefs();
-            if(playSound) {
-                if(volumeFeedbackTimer) clearTimeout(volumeFeedbackTimer);
-                volumeFeedbackTimer = setTimeout(() => {
-                    playVolumeFeedback();
-                    volumeFeedbackTimer = null;
-                }, 500);
-            }
-        }
-
-        function revokeTaskBlobURL(task) {
-            if (task.dataURL && typeof task.dataURL === 'string' && task.dataURL.startsWith('blob:')) {
-                URL.revokeObjectURL(task.dataURL);
-            }
-        }
-        function removeTaskById(id) {
-            const task = taskItems.find(t => t.id == id);
-            if (task) revokeTaskBlobURL(task);
-            taskItems = taskItems.filter(t => t.id != id);
-            renderTaskPanel();
-        }
-        function clearAllTasks() {
-            taskItems.forEach(task => revokeTaskBlobURL(task));
-            taskItems = [];
-            renderTaskPanel();
-            showToast('已清空全部任务');
-        }
-        function showToast(msg) {
-            const toast = document.createElement('div');
-            toast.textContent = msg;
-            toast.style.position = 'fixed';
-            toast.style.bottom = '100px';
-            toast.style.left = '50%';
-            toast.style.transform = 'translateX(-50%)';
-            toast.style.backgroundColor = 'var(--tabs-active, #4a6fa5)';
-            toast.style.color = 'white';
-            toast.style.padding = '10px 20px';
-            toast.style.borderRadius = '30px';
-            toast.style.zIndex = '9999';
-            toast.style.fontSize = '14px';
-            toast.style.boxShadow = '0 6px 16px rgba(0,0,0,0.2)';
-            document.body.appendChild(toast);
-            setTimeout(() => toast.remove(), 2000);
-        }
-
-        function renderTaskPanel() {
-            if(taskItems.length === 0) {
-                taskListDiv.innerHTML = '<div class="empty-tasks">暂无导入文件</div>';
-                playingVideoCount = 0;
-                updateTaskCountdownPauseByVideo();
-                return;
-            }
-            taskListDiv.innerHTML = '';
-            taskItems.slice(0, 3).forEach(task => {
-                const card = document.createElement('div');
-                card.className = 'task-card';
-                let previewHtml = '';
-                if(task.type.startsWith('image/')) {
-                    previewHtml = `<img src="${task.dataURL}" alt="preview">`;
-                } else if(task.type.startsWith('video/')) {
-                    previewHtml = `<video controls muted style="max-height:180px" src="${task.dataURL}"></video>`;
-                } else {
-                    previewHtml = `<pre>${escapeHtml(task.contentText.substring(0, 300))}${task.contentText.length>300 ? '…' : ''}</pre>`;
+            document.addEventListener('touchstart', (e) => {
+                if (e.touches.length === 2) {
+                    lastPinchDist = getPinchDist(e);
                 }
-                card.innerHTML = `
-                    <div class="task-close" data-id="${task.id}"><i class="fas fa-times-circle"></i></div>
-                    <div class="task-title">${escapeHtml(task.name)}</div>
-                    <div class="task-preview">${previewHtml}</div>
-                `;
-                taskListDiv.appendChild(card);
-            });
-            document.querySelectorAll('.task-close').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    const id = btn.dataset.id;
-                    removeTaskById(id);
-                });
-            });
-            observeTaskPanelVideos();
-            playingVideoCount = 0;
-            const videos = taskPanel.querySelectorAll('video');
-            videos.forEach(v => { if (!v.paused) playingVideoCount++; });
-            updateTaskCountdownPauseByVideo();
-        }
+            }, { passive: true });
 
-        function addTask(file, content, dataUrl, type) {
-            const newTask = {
-                id: Date.now() + Math.random(),
-                name: file.name,
-                type: type,
-                dataURL: dataUrl,
-                contentText: content || ''
-            };
-            taskItems.unshift(newTask);
-            if(taskItems.length > 3) taskItems.pop();
-            renderTaskPanel();
-            openTaskPanel();
-            showToast(`已导入: ${file.name}`);
-        }
-        function importFileToTask(file) {
-            const type = file.type;
-            if(type.startsWith('image/')) {
-                const reader = new FileReader();
-                reader.onload = e => addTask(file, null, e.target.result, type);
-                reader.readAsDataURL(file);
-            } else if(type.startsWith('video/')) {
-                const url = URL.createObjectURL(file);
-                addTask(file, null, url, type);
-            } else if(type.startsWith('text/') || file.name.endsWith('.txt') || file.name.endsWith('.html') || file.name.endsWith('.js') || file.name.endsWith('.css')) {
-                const reader = new FileReader();
-                reader.onload = e => addTask(file, e.target.result, null, type);
-                reader.readAsText(file);
-            } else {
-                addTask(file, `文件类型: ${type || '未知'}\n大小: ${(file.size/1024).toFixed(1)} KB`, null, 'application/octet-stream');
-            }
-        }
-        function handleMultipleFiles(files) {
-            if(!files || files.length === 0) return;
-            Array.from(files).forEach(f => importFileToTask(f));
-            globalFileImport.value = '';
-        }
-        clearAllTasksBtn.addEventListener('click', clearAllTasks);
-
-        function renderSearchHistory() {
-            if(!searchHistory.length) {
-                historyPanel.classList.remove('show');
-                return;
-            }
-            historyPanel.innerHTML = searchHistory.map((q, idx) => `
-                <div class="history-item" data-index="${idx}">
-                    <div class="history-text"><i class="fas fa-history"></i>${escapeHtml(q)}</div>
-                    <div class="delete-history" data-query="${escapeHtml(q)}"><i class="fas fa-times-circle"></i></div>
-                </div>
-            `).join('');
-            document.querySelectorAll('.history-item .history-text').forEach((item, idx) => {
-                const parent = item.closest('.history-item');
-                const query = searchHistory[parent?.dataset?.index];
-                if(query) item.addEventListener('click', () => { searchInput.value = query; performSearch(); });
-            });
-            document.querySelectorAll('.delete-history').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    const query = btn.dataset.query;
-                    if(query) {
-                        const idx = searchHistory.indexOf(query);
-                        if(idx !== -1) searchHistory.splice(idx, 1);
-                        localStorage.setItem('cui4_search_history', JSON.stringify(searchHistory));
-                        renderSearchHistory();
+            document.addEventListener('touchmove', (e) => {
+                if (e.touches.length === 2) {
+                    const dist = getPinchDist(e);
+                    if (lastPinchDist > 0) {
+                        const delta = dist - lastPinchDist;
+                        if (Math.abs(delta) > 20) {
+                            e.preventDefault();
+                            if (delta > 0) {
+                                if (!settingsPanel.classList.contains('open')) {
+                                    openSettingsWithAnimation();
+                                }
+                            } else {
+                                if (!taskPanel.classList.contains('open')) {
+                                    openTaskPanel();
+                                }
+                            }
+                            lastPinchDist = dist;
+                        }
                     }
-                });
-            });
-        }
-        function clearAllHistory() {
-            searchHistory = [];
-            localStorage.setItem('cui4_search_history', JSON.stringify([]));
-            renderSearchHistory();
-            showToast('已清除全部历史记录');
-        }
-        clearAllHistoryBtn.addEventListener('click', clearAllHistory);
-        function addHistory(query) {
-            if(!query) return;
-            query = query.trim();
-            const idx = searchHistory.indexOf(query);
-            if(idx !== -1) searchHistory.splice(idx,1);
-            searchHistory.unshift(query);
-            if(searchHistory.length>10) searchHistory.pop();
-            localStorage.setItem('cui4_search_history', JSON.stringify(searchHistory));
-            renderSearchHistory();
-        }
-        function performSearch() {
-            let q = searchInput.value.trim();
-            if(!q) return;
-            addHistory(q);
-            let url = q.match(/^https?:\/\//) ? q : `https://www.bing.com/search?q=${encodeURIComponent(q)}`;
-            window.open(url, '_blank');
-        }
-
-        function populateCountries() {
-            countrySelect.innerHTML = '';
-            countries.forEach(c => { const opt = document.createElement('option'); opt.value = c; opt.textContent = c; countrySelect.appendChild(opt); });
-        }
-        function populateStates() {
-            const country = countrySelect.value;
-            const states = Object.keys(locationData[country] || {});
-            stateSelect.innerHTML = '';
-            states.forEach(s => { const opt = document.createElement('option'); opt.value = s; opt.textContent = s; stateSelect.appendChild(opt); });
-            if(states.length) populateCities();
-        }
-        function populateCities() {
-            const country = countrySelect.value;
-            const state = stateSelect.value;
-            const cities = (locationData[country] && locationData[country][state]) || [];
-            citySelect.innerHTML = '';
-            cities.forEach(c => { const opt = document.createElement('option'); opt.value = c; opt.textContent = c; citySelect.appendChild(opt); });
-        }
-        const weatherMap = {
-            'sunny': '晴朗', 'clear': '晴朗', 'fair': '晴朗',
-            'partly cloudy': '局部多云', 'cloudy': '多云', 'overcast': '阴天',
-            'rain': '雨', 'light rain': '小雨', 'heavy rain': '大雨', 'shower': '阵雨',
-            'snow': '雪', 'light snow': '小雪', 'thunderstorm': '雷雨',
-            'mist': '雾', 'fog': '雾', 'haze': '霾'
-        };
-        function translateWeatherToChinese(engDesc) {
-            if (!engDesc) return '未知天气';
-            if (/[\u4e00-\u9fa5]/.test(engDesc)) return engDesc;
-            const lower = engDesc.toLowerCase();
-            for (const [en, zh] of Object.entries(weatherMap)) {
-                if (lower.includes(en)) return zh;
-            }
-            return engDesc;
-        }
-        async function fetchWeatherByCity(cityName) {
-            try {
-                const res = await fetch(`https://wttr.in/${encodeURIComponent(cityName)}?format=j1&lang=zh-cn`);
-                const data = await res.json();
-                const current = data.current_condition[0];
-                let weatherDesc = current.weatherDesc[0]?.value || '未知';
-                weatherDesc = translateWeatherToChinese(weatherDesc);
-                const temp = current.temp_C;
-                weatherTextSpan.innerText = `☁️ ${weatherDesc}`;
-                tempTextSpan.innerText = `🌡️ ${temp}°C`;
-            } catch(e) {
-                weatherTextSpan.innerText = '☁️ 天气同步暂不可用';
-                tempTextSpan.innerText = '🌡️ --°C';
-            }
-        }
-        function updateLocationDisplay() {
-            const country = countrySelect.value;
-            const state = stateSelect.value;
-            const city = citySelect.value;
-            prefs.locationCountry = country; prefs.locationState = state; prefs.locationCity = city;
-            locationText.innerText = `📍 ${country} ${state} ${city}`;
-            fetchWeatherByCity(city);
-            savePrefs();
-        }
-
-        function savePrefs() {
-            let toStore = { ...prefs };
-            if(prefs.wallpaperType !== 'image') toStore.wallpaperData = null;
-            localStorage.setItem(STORAGE, JSON.stringify(toStore));
-        }
-        function loadPrefs() {
-            const stored = localStorage.getItem(STORAGE);
-            if(stored) { try { Object.assign(prefs, JSON.parse(stored)); } catch(e) {} }
-            usernameInput.value = prefs.userName;
-            brightnessSlider.value = prefs.brightness;
-            setVolumeValue(prefs.volume, false);
-            applyBrightness(prefs.brightness);
-            if(prefs.locationCountry && countries.includes(prefs.locationCountry)) {
-                countrySelect.value = prefs.locationCountry;
-                populateStates();
-                if(prefs.locationState && stateSelect.querySelector(`option[value="${prefs.locationState}"]`)) {
-                    stateSelect.value = prefs.locationState;
-                    populateCities();
-                    if(prefs.locationCity && citySelect.querySelector(`option[value="${prefs.locationCity}"]`)) citySelect.value = prefs.locationCity;
                 }
-            } else { populateStates(); }
-            updateLocationDisplay();
-            if(prefs.wallpaperSoundEnabled) wallpaperSoundToggle.classList.add('active');
-            else wallpaperSoundToggle.classList.remove('active');
-            // 壁纸加载：优先判断视频持久化
-            if(prefs.wallpaperType === 'video') {
-                restoreVideoWallpaper();
-            } else if(prefs.wallpaperType === 'image' && prefs.wallpaperData) {
-                setWallpaperImageFromDataURL(prefs.wallpaperData);
-            } else {
-                resetToDefaultWallpaper();
-            }
-            applyThemeFromPref();
-            renderSearchHistory();
-            updateDateTime();
-        }
-        function applyThemeFromPref() {
-            const mode = prefs.themeMode;
-            const hour = new Date().getHours();
-            let isDark = false;
-            if(mode === 'auto') isDark = (hour >= 18 || hour < 6);
-            else if(mode === 'dark') isDark = true;
-            document.body.classList.toggle('dark', isDark);
-            document.querySelectorAll('.theme-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.theme === prefs.themeMode));
-        }
-        function updateDateTime() {
-            const now = new Date();
-            const hh = now.getHours().toString().padStart(2,'0');
-            const mm = now.getMinutes().toString().padStart(2,'0');
-            const ss = now.getSeconds().toString().padStart(2,'0');
-            clockEl.innerText = `${hh}:${mm}:${ss}`;
-            const year = now.getFullYear();
-            const month = (now.getMonth()+1).toString().padStart(2,'0');
-            const day = now.getDate().toString().padStart(2,'0');
-            dateEl.innerText = `${year}.${month}.${day}`;
-            let greet = '';
-            const hour = now.getHours();
-            if(hour<6) greet='凌晨';
-            else if(hour<11) greet='早上';
-            else if(hour<14) greet='中午';
-            else if(hour<18) greet='下午';
-            else if(hour<20) greet='傍晚';
-            else greet='晚上';
-            const name = prefs.userName.trim() || 'USER';
-            greetingEl.innerHTML = `${greet}好，${name}`;
-        }
-        setInterval(updateDateTime, 1000);
-        setInterval(() => { if(prefs.themeMode === 'auto') applyThemeFromPref(); }, 60000);
+            }, { passive: false });
 
-        // 修改 resetToDefaultWallpaper 以清除DB视频
-        async function resetToDefaultWallpaper() {
-            revokeCurrentVideoUrl();
-            bgVideo.pause();
-            bgVideo.style.display = 'none';
-            bgVideo.src = '';
-            bgVideo.load();
-            bgImageDiv.style.display = 'none';
-            defaultBgTextEl.style.display = 'block';
-            bgImageDiv.style.backgroundImage = '';
-            prefs.wallpaperType = 'default';
-            prefs.wallpaperData = null;
-            await deleteVideoBlobFromDB();
-            savePrefs();
-            showToast('已恢复默认壁纸');
-        }
-        function setWallpaperImageFromDataURL(dataUrl) {
-            revokeCurrentVideoUrl();
-            bgVideo.pause();
-            bgVideo.style.display = 'none';
-            bgVideo.src = '';
-            bgImageDiv.style.display = 'block';
-            bgImageDiv.style.backgroundImage = `url(${dataUrl})`;
-            defaultBgTextEl.style.display = 'none';
-            prefs.wallpaperType = 'image';
-            prefs.wallpaperData = dataUrl;
-            // 如果有视频DB则清除
-            deleteVideoBlobFromDB().catch(console.warn);
-            savePrefs();
-            showToast('壁纸已更换');
-        }
-        // 重写 handleWallpaperFile 支持视频持久化到 IndexedDB
-        async function handleWallpaperFile(file) {
-            if(!file) return;
-            if(file.type.startsWith('image/')) {
-                try {
-                    const compressedDataUrl = await compressImageToMax(file, 1920, 1080, 0.85);
-                    setWallpaperImageFromDataURL(compressedDataUrl);
-                } catch(err) {
-                    console.error(err);
-                    const reader = new FileReader();
-                    reader.onload = e => setWallpaperImageFromDataURL(e.target.result);
-                    reader.readAsDataURL(file);
-                }
-                wallpaperUpload.value = '';
-            } else if(file.type === 'video/mp4') {
-                const blob = file.slice(0, file.size, file.type);
-                await saveVideoBlobToDB(blob);
-                await applyVideoWallpaperFromBlob(blob);
-                showToast('视频壁纸已保存 (刷新后仍然存在)');
-                wallpaperUpload.value = '';
-            } else {
-                alert('仅支持jpg/png/mp4');
-                wallpaperUpload.value = '';
-            }
-        }
-        function setWallpaperSound(enabled) {
-            prefs.wallpaperSoundEnabled = enabled;
-            if(prefs.wallpaperType === 'video') {
-                bgVideo.muted = !enabled;
-                if(!bgVideo.muted) bgVideo.volume = currentVolumePercent/100;
-            }
-            if(enabled) wallpaperSoundToggle.classList.add('active');
-            else wallpaperSoundToggle.classList.remove('active');
-            savePrefs();
-        }
-        wallpaperSoundToggle.addEventListener('click', () => setWallpaperSound(!prefs.wallpaperSoundEnabled));
-        function applyBrightness(val) { brightnessMask.style.backgroundColor = `rgba(0,0,0,${(100-val)/100})`; }
+            document.addEventListener('touchend', (e) => {
+                if (e.touches.length < 2) lastPinchDist = 0;
+            }, { passive: true });
 
-        // 齿轮动画 + 设置面板
-        let isAnimating = false;
-        function openSettingsWithAnimation() {
-            if(isAnimating) return;
-            isAnimating = true;
-            const gear = animGear;
-            gear.classList.remove('hide-exit', 'active');
-            void gear.offsetWidth;
-            gear.classList.add('active');
-            setTimeout(() => {
-                gear.classList.remove('active');
-                gear.classList.add('hide-exit');
+            // ================= 面板控制 =================
+            let isAnimating = false;
+
+            function openSettingsWithAnimation() {
+                if (isAnimating) return;
+                if (settingsPanel.classList.contains('open')) return;
+                isAnimating = true;
+                const gear = animGear;
+                gear.classList.remove('hide-exit', 'active');
+                void gear.offsetWidth;
+                gear.classList.add('active');
                 setTimeout(() => {
-                    gear.classList.remove('hide-exit');
-                    gear.style.removeProperty('animation');
-                    settingsPanel.classList.add('open');
-                    if (settingsCountdown) settingsCountdown.setPanelOpen(true);
-                    isAnimating = false;
-                }, 650);
-            }, 600);
-        }
-        function closeSettings() {
-            settingsPanel.classList.remove('open');
-            if (settingsCountdown) settingsCountdown.setPanelOpen(false);
-        }
-        function openTaskPanel() {
-            taskPanel.classList.add('open');
-            if (taskCountdown) taskCountdown.setPanelOpen(true);
-            setTimeout(() => {
-                playingVideoCount = 0;
-                const videos = taskPanel.querySelectorAll('video');
-                videos.forEach(v => { if (!v.paused) playingVideoCount++; });
-                updateTaskCountdownPauseByVideo();
-            }, 50);
-        }
-        function closeTaskPanel() {
-            taskPanel.classList.remove('open');
-            if (taskCountdown) taskCountdown.setPanelOpen(false);
-        }
-        function closeAllPanels() { closeSettings(); closeTaskPanel(); }
-
-        function resetSettingsCountdown() { if (settingsCountdown) settingsCountdown.reset(); }
-        function resetTaskCountdown() { if (taskCountdown) taskCountdown.reset(); }
-        
-        settingsPanel.addEventListener('mousemove', resetSettingsCountdown);
-        settingsPanel.addEventListener('click', resetSettingsCountdown);
-        settingsPanel.addEventListener('touchstart', resetSettingsCountdown);
-        settingsPanel.addEventListener('scroll', resetSettingsCountdown);
-        taskPanel.addEventListener('mousemove', resetTaskCountdown);
-        taskPanel.addEventListener('click', resetTaskCountdown);
-        taskPanel.addEventListener('touchstart', resetTaskCountdown);
-        taskPanel.addEventListener('scroll', resetTaskCountdown);
-
-        function isInputFocused() {
-            const active = document.activeElement;
-            return active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.isContentEditable);
-        }
-        function isTouchOnSlider(target) {
-            let el = target;
-            while(el && el !== document.body) {
-                if(el.tagName === 'INPUT' && el.type === 'range') return true;
-                el = el.parentElement;
+                    gear.classList.remove('active');
+                    gear.classList.add('hide-exit');
+                    setTimeout(() => {
+                        gear.classList.remove('hide-exit');
+                        gear.style.removeProperty('animation');
+                        settingsPanel.classList.add('open');
+                        settingsCountdown.setPanelOpen(true);
+                        isAnimating = false;
+                    }, 650);
+                }, 600);
             }
-            return false;
-        }
-        let touchStartX = 0, touchStartY = 0;
-        const SWIPE_THRESHOLD = 50;
-        function handleTouchStart(e) {
-            if(isInputFocused()) return;
-            if(isTouchOnSlider(e.target)) { touchStartX = 0; return; }
-            touchStartX = e.touches[0].clientX;
-            touchStartY = e.touches[0].clientY;
-        }
-        function handleTouchEnd(e) {
-            if(!touchStartX) return;
-            if(isInputFocused()) { touchStartX = 0; return; }
-            const deltaX = e.changedTouches[0].clientX - touchStartX;
-            const deltaY = e.changedTouches[0].clientY - touchStartY;
-            if(Math.abs(deltaX) < SWIPE_THRESHOLD) { touchStartX = 0; return; }
-            const isSettingsOpen = settingsPanel.classList.contains('open');
-            const isTaskOpen = taskPanel.classList.contains('open');
-            if(deltaX > SWIPE_THRESHOLD && Math.abs(deltaX) > Math.abs(deltaY)) {
-                if(isSettingsOpen) { openTaskPanel(); }
-                else if(!isTaskOpen) { openTaskPanel(); }
-                else { closeTaskPanel(); }
-            } else if(deltaX < -SWIPE_THRESHOLD && Math.abs(deltaX) > Math.abs(deltaY)) {
-                if(isSettingsOpen) { closeSettings(); }
-                else if(!isSettingsOpen) { openSettingsWithAnimation(); }
+
+            function closeSettings() {
+                settingsPanel.classList.remove('open');
+                settingsCountdown.setPanelOpen(false);
             }
-            touchStartX = 0;
-        }
 
-        function handleKeydown(e) {
-            if(isInputFocused()) return;
-            if(e.key === 'Tab' && !e.ctrlKey && !e.metaKey) {
-                e.preventDefault();
-                if(taskPanel.classList.contains('open')) closeTaskPanel();
-                else openTaskPanel();
-                return;
+            function openTaskPanel() {
+                if (taskPanel.classList.contains('open')) return;
+                taskPanel.classList.add('open');
+                taskCountdown.setPanelOpen(true);
+                setTimeout(() => {
+                    let playing = 0;
+                    taskPanel.querySelectorAll('video').forEach(v => { if (!v.paused) playing++; });
+                    if (playing > 0) taskCountdown.stop();
+                }, 50);
             }
-            switch(e.key) {
-                case 'ArrowLeft': e.preventDefault(); openSettingsWithAnimation(); break;
-                case 'ArrowRight': e.preventDefault(); openTaskPanel(); break;
-                case 'Delete': case 'Backspace': e.preventDefault(); closeAllPanels(); break;
+
+            function closeTaskPanel() {
+                taskPanel.classList.remove('open');
+                taskCountdown.setPanelOpen(false);
+                taskCountdown.start();
             }
-        }
-        function handleMouseDown(e) {
-            if(isInputFocused()) return;
-            if(e.button === 1) { e.preventDefault(); openTaskPanel(); }
-        }
-        function handleContextMenu(e) { e.preventDefault(); openSettingsWithAnimation(); }
 
-        document.addEventListener('touchstart', handleTouchStart, { passive: false });
-        document.addEventListener('touchend', handleTouchEnd);
-        document.addEventListener('keydown', handleKeydown);
-        document.addEventListener('mousedown', handleMouseDown);
-        document.addEventListener('contextmenu', handleContextMenu);
+            function observeTaskVideos() {
+                taskPanel.querySelectorAll('video').forEach(v => {
+                    if (v._countdownBound) return;
+                    v._countdownBound = true;
+                    const playFn = () => { taskCountdown.stop(); };
+                    const pauseFn = () => {
+                        let playing = 0;
+                        taskPanel.querySelectorAll('video').forEach(v2 => { if (!v2.paused) playing++; });
+                        if (playing === 0 && taskPanel.classList.contains('open')) {
+                            taskCountdown.start();
+                        }
+                    };
+                    v.addEventListener('play', playFn);
+                    v.addEventListener('pause', pauseFn);
+                    v.addEventListener('ended', pauseFn);
+                    v._playFn = playFn;
+                    v._pauseFn = pauseFn;
+                });
+            }
 
-        searchConfirmBtn.addEventListener('click', performSearch);
-        searchInput.addEventListener('focus', () => {
-            if(searchHistory.length) historyPanel.classList.add('show');
-            if (navigator.virtualKeyboard) navigator.virtualKeyboard.show();
-        });
-        searchInput.addEventListener('blur', () => setTimeout(() => historyPanel.classList.remove('show'), 200));
-        searchInput.addEventListener('keypress', e => { if(e.key === 'Enter') performSearch(); });
+            // ================= 任务面板 =================
+            function revokeTaskBlobURL(task) {
+                if (task.dataURL && typeof task.dataURL === 'string' && task.dataURL.startsWith('blob:')) {
+                    URL.revokeObjectURL(task.dataURL);
+                }
+            }
 
-        settingsTrigger.addEventListener('click', () => openSettingsWithAnimation());
-        closeSettingsBtn.addEventListener('click', closeSettings);
-        document.addEventListener('click', (e) => {
-            if(!settingsPanel.contains(e.target) && !settingsTrigger.contains(e.target) && settingsPanel.classList.contains('open')) closeSettings();
-            if(!taskPanel.contains(e.target) && e.target !== openTaskViewBtn && e.target.closest('#openTaskViewBtn') === null && taskPanel.classList.contains('open')) closeTaskPanel();
-        });
-        openTaskViewBtn.addEventListener('click', () => openTaskPanel());
-        closeTaskPanelBtn.addEventListener('click', closeTaskPanel);
-        
-        document.querySelectorAll('.theme-btn').forEach(btn => {
-            btn.addEventListener('click', () => { prefs.themeMode = btn.dataset.theme; applyThemeFromPref(); savePrefs(); });
-        });
-        usernameInput.addEventListener('change', () => { prefs.userName = usernameInput.value; savePrefs(); updateDateTime(); });
-        brightnessSlider.addEventListener('input', e => { prefs.brightness = e.target.value; applyBrightness(prefs.brightness); savePrefs(); });
-        volumeSlider.addEventListener('input', e => setVolumeValue(e.target.value, true));
-        applyLocationBtn.addEventListener('click', updateLocationDisplay);
-        resetWallpaperBtn.addEventListener('click', resetToDefaultWallpaper);
-        
-        wallpaperUpload.addEventListener('change', e => { if(e.target.files && e.target.files[0]) handleWallpaperFile(e.target.files[0]); });
-        globalFileImport.addEventListener('change', e => { if(e.target.files) handleMultipleFiles(e.target.files); });
-        
-        window.addEventListener('beforeunload', () => {
-            taskItems.forEach(task => revokeTaskBlobURL(task));
-            if (bgVideo.src && bgVideo.src.startsWith('blob:')) URL.revokeObjectURL(bgVideo.src);
-            revokeCurrentVideoUrl();
-        });
-        
-        settingsCountdown = new Countdown(document.getElementById('settingsCountdown'), () => closeSettings(), {});
-        taskCountdown = new Countdown(document.getElementById('taskCountdown'), () => closeTaskPanel(), {});
-        
-        populateCountries();
-        loadPrefs();
-        applyVolumeToMedia(prefs.volume);
-        renderTaskPanel();
-        
-        function escapeHtml(str) { return str.replace(/[&<>]/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m])); }
-    })();
-</script>
+            function removeTaskById(id) {
+                const task = taskItems.find(t => t.id == id);
+                if (task) revokeTaskBlobURL(task);
+                taskItems = taskItems.filter(t => t.id != id);
+                renderTaskPanel();
+            }
+
+            function clearAllTasks() {
+                taskItems.forEach(task => revokeTaskBlobURL(task));
+                taskItems = [];
+                renderTaskPanel();
+                showToast('已清空全部任务');
+            }
+
+            function renderTaskPanel() {
+                if (taskItems.length === 0) {
+                    taskListDiv.innerHTML = '<div class="empty-tasks">暂无导入文件</div>';
+                    return;
+                }
+                taskListDiv.innerHTML = '';
+                taskItems.slice(0, 3).forEach(task => {
+                    const card = document.createElement('div');
+                    card.className = 'task-card';
+                    let previewHtml = '';
+                    if (task.type.startsWith('image/')) {
+                        previewHtml = `<img src="${task.dataURL}" alt="preview">`;
+                    } else if (task.type.startsWith('video/')) {
+                        previewHtml =
+                            `<video controls muted style="max-height:180px" src="${task.dataURL}"></video>`;
+                    } else {
+                        previewHtml =
+                            `<pre>${escapeHtml(task.contentText.substring(0, 300))}${task.contentText.length>300?'…':''}</pre>`;
+                    }
+                    card.innerHTML = `
+                        <div class="task-close" data-id="${task.id}"><i class="fas fa-times-circle"></i></div>
+                        <div class="task-title">${escapeHtml(task.name)}</div>
+                        <div class="task-preview">${previewHtml}</div>
+                    `;
+                    taskListDiv.appendChild(card);
+                });
+                document.querySelectorAll('.task-close').forEach(btn => {
+                    btn.addEventListener('click', (e) => { removeTaskById(btn.dataset.id); });
+                });
+                observeTaskVideos();
+                let playing = 0;
+                taskPanel.querySelectorAll('video').forEach(v => { if (!v.paused) playing++; });
+                if (playing > 0 && taskPanel.classList.contains('open')) taskCountdown.stop();
+                else if (taskPanel.classList.contains('open')) taskCountdown.start();
+            }
+
+            function addTask(file, content, dataUrl, type) {
+                const newTask = { id: Date.now() + Math.random(), name: file.name, type: type, dataURL: dataUrl,
+                    contentText: content || '' };
+                taskItems.unshift(newTask);
+                if (taskItems.length > 3) taskItems.pop();
+                renderTaskPanel();
+                openTaskPanel();
+                showToast(`已导入: ${file.name}`);
+            }
+
+            function importFileToTask(file) {
+                const type = file.type;
+                if (type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = e => addTask(file, null, e.target.result, type);
+                    reader.readAsDataURL(file);
+                } else if (type.startsWith('video/')) {
+                    const url = URL.createObjectURL(file);
+                    addTask(file, null, url, type);
+                } else if (type.startsWith('text/') || file.name.endsWith('.txt') || file.name.endsWith('.html') || file
+                    .name.endsWith('.js') || file.name.endsWith('.css')) {
+                    const reader = new FileReader();
+                    reader.onload = e => addTask(file, e.target.result, null, type);
+                    reader.readAsText(file);
+                } else {
+                    addTask(file, `文件类型: ${type||'未知'}\n大小: ${(file.size/1024).toFixed(1)} KB`, null,
+                        'application/octet-stream');
+                }
+            }
+
+            function handleMultipleFiles(files) {
+                if (!files || files.length === 0) return;
+                Array.from(files).forEach(f => importFileToTask(f));
+                globalFileImport.value = '';
+            }
+
+            clearAllTasksBtn.addEventListener('click', clearAllTasks);
+
+            // ================= 搜索历史 =================
+            function renderSearchHistory() {
+                if (!searchHistory.length) { historyPanel.classList.remove('show'); return; }
+                historyPanel.innerHTML = searchHistory.map((q, idx) => `
+                    <div class="history-item" data-index="${idx}">
+                        <div class="history-text"><i class="fas fa-history"></i>${escapeHtml(q)}</div>
+                        <div class="delete-history" data-query="${escapeHtml(q)}"><i class="fas fa-times-circle"></i></div>
+                    </div>
+                `).join('');
+                document.querySelectorAll('.history-item .history-text').forEach((item, idx) => {
+                    const parent = item.closest('.history-item');
+                    const query = searchHistory[parent?.dataset?.index];
+                    if (query) item.addEventListener('click', () => { searchInput.value = query;
+                        performSearch(); });
+                });
+                document.querySelectorAll('.delete-history').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const query = btn.dataset.query;
+                        if (query) {
+                            const idx = searchHistory.indexOf(query);
+                            if (idx !== -1) searchHistory.splice(idx, 1);
+                            localStorage.setItem('cui4_search_history', JSON.stringify(searchHistory));
+                            renderSearchHistory();
+                        }
+                    });
+                });
+            }
+
+            function clearAllHistory() {
+                searchHistory = [];
+                localStorage.setItem('cui4_search_history', JSON.stringify([]));
+                renderSearchHistory();
+                showToast('已清除全部历史记录');
+            }
+            clearAllHistoryBtn.addEventListener('click', clearAllHistory);
+
+            function addHistory(query) {
+                if (!query) return;
+                query = query.trim();
+                const idx = searchHistory.indexOf(query);
+                if (idx !== -1) searchHistory.splice(idx, 1);
+                searchHistory.unshift(query);
+                if (searchHistory.length > 10) searchHistory.pop();
+                localStorage.setItem('cui4_search_history', JSON.stringify(searchHistory));
+                renderSearchHistory();
+            }
+
+            function performSearch() {
+                let q = searchInput.value.trim();
+                if (!q) return;
+                addHistory(q);
+                let url = q.match(/^https?:\/\//) ? q : `https://www.bing.com/search?q=${encodeURIComponent(q)}`;
+                window.open(url, '_blank');
+            }
+
+            // ================= 地区天气 =================
+            function populateCountries() {
+                countrySelect.innerHTML = '';
+                countries.forEach(c => { const opt = document.createElement('option');
+                    opt.value = c;
+                    opt.textContent = c;
+                    countrySelect.appendChild(opt); });
+            }
+
+            function populateStates() {
+                const country = countrySelect.value;
+                const states = Object.keys(locationData[country] || {});
+                stateSelect.innerHTML = '';
+                states.forEach(s => { const opt = document.createElement('option');
+                    opt.value = s;
+                    opt.textContent = s;
+                    stateSelect.appendChild(opt); });
+                if (states.length) populateCities();
+            }
+
+            function populateCities() {
+                const country = countrySelect.value;
+                const state = stateSelect.value;
+                const cities = (locationData[country] && locationData[country][state]) || [];
+                citySelect.innerHTML = '';
+                cities.forEach(c => { const opt = document.createElement('option');
+                    opt.value = c;
+                    opt.textContent = c;
+                    citySelect.appendChild(opt); });
+            }
+
+            const weatherMap = { 'sunny': '晴朗', 'clear': '晴朗', 'fair': '晴朗', 'partly cloudy': '局部多云',
+                'cloudy': '多云', 'overcast': '阴天', 'rain': '雨', 'light rain': '小雨', 'heavy rain': '大雨',
+                'shower': '阵雨', 'snow': '雪', 'light snow': '小雪', 'thunderstorm': '雷雨', 'mist': '雾',
+                'fog': '雾', 'haze': '霾' };
+
+            function translateWeatherToChinese(engDesc) {
+                if (!engDesc) return '未知天气';
+                if (/[\u4e00-\u9fa5]/.test(engDesc)) return engDesc;
+                const lower = engDesc.toLowerCase();
+                for (const [en, zh] of Object.entries(weatherMap)) {
+                    if (lower.includes(en)) return zh;
+                }
+                return engDesc;
+            }
+
+            async function fetchWeatherByCity(cityName) {
+                try {
+                    const res = await fetch(`https://wttr.in/${encodeURIComponent(cityName)}?format=j1&lang=zh-cn`);
+                    const data = await res.json();
+                    const current = data.current_condition[0];
+                    let weatherDesc = current.weatherDesc[0]?.value || '未知';
+                    weatherDesc = translateWeatherToChinese(weatherDesc);
+                    const temp = current.temp_C;
+                    weatherTextSpan.innerText = `☁️ ${weatherDesc}`;
+                    tempTextSpan.innerText = `🌡️ ${temp}°C`;
+                } catch (e) {
+                    weatherTextSpan.innerText = '☁️ 天气同步暂不可用';
+                    tempTextSpan.innerText = '🌡️ --°C';
+                }
+            }
+
+            function updateLocationDisplay() {
+                const country = countrySelect.value;
+                const state = stateSelect.value;
+                const city = citySelect.value;
+                prefs.locationCountry = country;
+                prefs.locationState = state;
+                prefs.locationCity = city;
+                locationText.innerText = `📍 ${country} ${state} ${city}`;
+                fetchWeatherByCity(city);
+                savePrefs();
+            }
+
+            // ================= 偏好存储 =================
+            function savePrefs() {
+                let toStore = { ...prefs };
+                if (prefs.wallpaperType !== 'image') toStore.wallpaperData = null;
+                localStorage.setItem(STORAGE, JSON.stringify(toStore));
+            }
+
+            function loadPrefs() {
+                const stored = localStorage.getItem(STORAGE);
+                if (stored) { try { Object.assign(prefs, JSON.parse(stored)); } catch (e) {} }
+                usernameInput.value = prefs.userName;
+                brightnessSlider.value = prefs.brightness;
+                setVolumeValue(prefs.volume, false);
+                applyBrightness(prefs.brightness);
+                if (prefs.locationCountry && countries.includes(prefs.locationCountry)) {
+                    countrySelect.value = prefs.locationCountry;
+                    populateStates();
+                    if (prefs.locationState && stateSelect.querySelector(`option[value="${prefs.locationState}"]`)) {
+                        stateSelect.value = prefs.locationState;
+                        populateCities();
+                        if (prefs.locationCity && citySelect.querySelector(`option[value="${prefs.locationCity}"]`))
+                            citySelect.value = prefs.locationCity;
+                    }
+                } else { populateStates(); }
+                updateLocationDisplay();
+                wallpaperSoundToggle.classList.toggle('active', prefs.wallpaperSoundEnabled);
+                if (prefs.wallpaperType === 'video') {
+                    restoreVideoWallpaper();
+                } else if (prefs.wallpaperType === 'image' && prefs.wallpaperData) {
+                    setWallpaperImageFromDataURL(prefs.wallpaperData);
+                } else {
+                    resetToDefaultWallpaper();
+                }
+                applyThemeFromPref();
+                renderSearchHistory();
+                updateDateTime();
+                updateFixedWidgets();
+                if (prefs.准时提醒) showToast('准时提醒已开启');
+            }
+
+            function applyThemeFromPref() {
+                const mode = prefs.themeMode;
+                const hour = new Date().getHours();
+                let isDark = false;
+                if (mode === 'auto') isDark = (hour >= 18 || hour < 6);
+                else if (mode === 'dark') isDark = true;
+                document.body.classList.toggle('dark', isDark);
+                document.querySelectorAll('.theme-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.theme ===
+                    prefs.themeMode));
+            }
+
+            function updateDateTime() {
+                const now = new Date();
+                const hh = now.getHours().toString().padStart(2, '0');
+                const mm = now.getMinutes().toString().padStart(2, '0');
+                const ss = now.getSeconds().toString().padStart(2, '0');
+                clockEl.innerText = `${hh}:${mm}:${ss}`;
+                const year = now.getFullYear();
+                const month = (now.getMonth() + 1).toString().padStart(2, '0');
+                const day = now.getDate().toString().padStart(2, '0');
+                dateEl.innerText = `${year}.${month}.${day}`;
+                let greet = '';
+                const hour = now.getHours();
+                if (hour < 6) greet = '凌晨';
+                else if (hour < 11) greet = '早上';
+                else if (hour < 14) greet = '中午';
+                else if (hour < 18) greet = '下午';
+                else if (hour < 20) greet = '傍晚';
+                else greet = '晚上';
+                const name = prefs.userName.trim() || 'USER';
+                greetingEl.innerHTML = `${greet}好，${name}`;
+                updateFixedWidgets();
+            }
+            setInterval(updateDateTime, 1000);
+            setInterval(() => { if (prefs.themeMode === 'auto') applyThemeFromPref(); }, 60000);
+
+            // ================= 事件绑定 =================
+            searchConfirmBtn.addEventListener('click', performSearch);
+            searchInput.addEventListener('focus', () => { if (searchHistory.length) historyPanel.classList.add('show'); });
+            searchInput.addEventListener('blur', () => setTimeout(() => historyPanel.classList.remove('show'), 200));
+            searchInput.addEventListener('keypress', e => { if (e.key === 'Enter') performSearch(); });
+
+            settingsTrigger.addEventListener('click', () => openSettingsWithAnimation());
+            closeSettingsBtn.addEventListener('click', closeSettings);
+            document.addEventListener('click', (e) => {
+                if (!settingsPanel.contains(e.target) && !settingsTrigger.contains(e.target) && settingsPanel
+                    .classList.contains('open')) closeSettings();
+                if (!taskPanel.contains(e.target) && e.target !== openTaskViewBtn && e.target.closest(
+                        '#openTaskViewBtn') === null && taskPanel.classList.contains('open')) closeTaskPanel();
+                if (!funcPanel.contains(e.target) && e.target !== openFuncPanelBtn && !funcPanel.classList
+                    .contains('open') && funcPanelOpen) closeFuncPanel();
+            });
+
+            openTaskViewBtn.addEventListener('click', () => openTaskPanel());
+            closeTaskPanelBtn.addEventListener('click', closeTaskPanel);
+
+            document.querySelectorAll('.theme-btn').forEach(btn => {
+                btn.addEventListener('click', () => { prefs.themeMode = btn.dataset.theme;
+                    applyThemeFromPref();
+                    savePrefs(); });
+            });
+            usernameInput.addEventListener('change', () => { prefs.userName = usernameInput.value;
+                savePrefs();
+                updateDateTime(); });
+            brightnessSlider.addEventListener('input', e => { prefs.brightness = e.target.value;
+                applyBrightness(prefs.brightness);
+                savePrefs(); });
+            volumeSlider.addEventListener('input', e => setVolumeValue(e.target.value, true));
+            applyLocationBtn.addEventListener('click', updateLocationDisplay);
+            resetWallpaperBtn.addEventListener('click', resetToDefaultWallpaper);
+            wallpaperUpload.addEventListener('change', e => { if (e.target.files && e.target.files[0]) handleWallpaperFile(
+                    e.target.files[0]); });
+            globalFileImport.addEventListener('change', e => { if (e.target.files) handleMultipleFiles(e.target.files); });
+
+            openFuncPanelBtn.addEventListener('click', openFuncPanel);
+            closeFuncPanelBtn.addEventListener('click', closeFuncPanel);
+
+            funcGrid.addEventListener('click', (e) => {
+                const card = e.target.closest('.func-card');
+                if (card) {
+                    const func = card.dataset.func;
+                    openDetail(func);
+                }
+            });
+
+            backFromDetail.addEventListener('click', closeDetail);
+
+            // ================= 键盘 =================
+            function isInputFocused() {
+                const active = document.activeElement;
+                return active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active
+                .isContentEditable);
+            }
+
+            document.addEventListener('keydown', (e) => {
+                if (isInputFocused()) return;
+                // 全局 Delete 键处理（当全屏计算器打开时，由 calcKeyHandler 处理，这里不重复）
+                if (e.key === 'Delete') {
+                    // 如果全屏计算器打开，calcKeyHandler会处理并阻止冒泡
+                    // 否则，关闭所有面板
+                    if (!fullscreenOverlay.classList.contains('active')) {
+                        e.preventDefault();
+                        if (settingsPanel.classList.contains('open')) closeSettings();
+                        if (taskPanel.classList.contains('open')) closeTaskPanel();
+                        if (funcPanelOpen) closeFuncPanel();
+                        if (funcDetailOverlay.classList.contains('open')) closeDetail();
+                    }
+                    return;
+                }
+                if (e.key === 'Tab' && !e.ctrlKey && !e.metaKey) {
+                    e.preventDefault();
+                    if (taskPanel.classList.contains('open')) closeTaskPanel();
+                    else openTaskPanel();
+                    return;
+                }
+                switch (e.key) {
+                    case 'ArrowLeft':
+                        e.preventDefault();
+                        openSettingsWithAnimation();
+                        break;
+                    case 'ArrowRight':
+                        e.preventDefault();
+                        openTaskPanel();
+                        break;
+                    case 'Backspace':
+                        // 只有未聚焦输入框时，且非全屏计算器，才关闭面板
+                        if (!fullscreenOverlay.classList.contains('active')) {
+                            e.preventDefault();
+                            if (settingsPanel.classList.contains('open')) closeSettings();
+                            if (taskPanel.classList.contains('open')) closeTaskPanel();
+                            if (funcPanelOpen) closeFuncPanel();
+                            if (funcDetailOverlay.classList.contains('open')) closeDetail();
+                        }
+                        break;
+                }
+            });
+
+            document.addEventListener('mousedown', (e) => {
+                if (isInputFocused()) return;
+                if (e.button === 1) { e.preventDefault();
+                    openTaskPanel(); }
+            });
+            document.addEventListener('contextmenu', (e) => { e.preventDefault();
+                openSettingsWithAnimation(); });
+
+            // ================= 启动 =================
+            const overlay = document.getElementById('startupOverlay');
+            if (overlay) { overlay.style.opacity = '0';
+                setTimeout(() => overlay.remove(), 200); }
+
+            populateCountries();
+            loadPrefs();
+            applyVolumeToMedia(prefs.volume);
+            renderTaskPanel();
+            updateFixedWidgets();
+            setTimeout(checkHourlyAlarm, 1000);
+
+            window.addEventListener('beforeunload', () => {
+                taskItems.forEach(task => revokeTaskBlobURL(task));
+                if (bgVideo.src && bgVideo.src.startsWith('blob:')) URL.revokeObjectURL(bgVideo.src);
+                revokeCurrentVideoUrl();
+                if (fsInterval) clearInterval(fsInterval);
+                document.removeEventListener('keydown', calcKeyHandler);
+            });
+
+            console.log('CUI4 功能栏版 启动完成');
+        })();
+    </script>
 </body>
 </html>
