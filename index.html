@@ -265,59 +265,98 @@
             to   { opacity: 1; transform: translateY(0); }
         }
 
-        .chat-input-row {
+        /* ===== 新版输入框（含深度思考/联网搜索） ===== */
+        .chat-input-wrapper {
             display: flex;
-            gap: 0.5rem;
+            flex-direction: column;
             width: 100%;
-            align-items: center;
             background: var(--card-glass);
             backdrop-filter: blur(18px);
             -webkit-backdrop-filter: blur(18px);
             border: 1px solid var(--glass-border);
-            border-radius: 32px;
-            padding: 0.35rem 0.35rem 0.35rem 1.3rem;
+            border-radius: 24px;
+            padding: 0.8rem 1rem;
             box-shadow: var(--shadow-sm);
             transition: box-shadow 0.2s, border-color 0.2s;
         }
-        .chat-input-row:focus-within {
+        .chat-input-wrapper:focus-within {
             border-color: var(--tabs-active);
             box-shadow: 0 6px 22px rgba(74, 111, 165, 0.18);
         }
-        .chat-input-row input {
-            flex: 1;
+        .chat-input-wrapper textarea {
+            width: 100%;
             background: transparent;
             border: none;
-            padding: 0.6rem 0;
+            resize: none;
             font-size: 1.02rem;
             color: var(--text-primary);
             outline: none;
-            font-weight: 400;
             font-family: inherit;
+            line-height: 1.5;
+            min-height: 48px;
+            max-height: 120px;
+            padding: 0;
+            margin-bottom: 0.5rem;
         }
-        .chat-input-row input::placeholder {
+        .chat-input-wrapper textarea::placeholder {
             color: var(--text-secondary);
             opacity: 0.55;
         }
-        .chat-input-row button {
+        .chat-input-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .chat-input-toggles {
+            display: flex;
+            gap: 8px;
+        }
+        .chat-toggle-btn {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            background: transparent;
+            border: 1px solid var(--setting-border);
+            border-radius: 16px;
+            padding: 4px 12px;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+        .chat-toggle-btn i {
+            font-size: 0.75rem;
+            color: var(--accent-grey);
+        }
+        .chat-toggle-btn.active {
+            background: rgba(74, 111, 165, 0.15);
+            border-color: var(--tabs-active);
+            color: var(--tabs-active);
+        }
+        .chat-toggle-btn.active i {
+            color: var(--tabs-active);
+        }
+        .send-btn {
             background: var(--tabs-active);
             border: none;
             border-radius: 50%;
-            width: 42px;
-            height: 42px;
+            width: 36px;
+            height: 36px;
             display: flex;
             align-items: center;
             justify-content: center;
             color: white;
-            font-size: 1rem;
+            font-size: 0.95rem;
             cursor: pointer;
             transition: transform 0.15s, filter 0.15s;
             flex-shrink: 0;
             padding: 0;
         }
-        .chat-input-row button:hover {
+        .send-btn:hover {
             filter: brightness(1.1);
         }
-        .chat-input-row button:active {
+        .send-btn:active {
             transform: scale(0.9);
         }
 
@@ -1325,10 +1364,12 @@
             .chat-message {
                 font-size: 0.95rem;
             }
-            .chat-input-row button {
-                width: 38px;
-                height: 38px;
-                font-size: 0.9rem;
+            .chat-input-wrapper textarea {
+                font-size: 1rem;
+            }
+            .chat-toggle-btn {
+                padding: 3px 8px;
+                font-size: 0.75rem;
             }
         }
         @keyframes fadeUp {
@@ -1408,9 +1449,16 @@
         <div class="layout-right" id="layoutRight">
             <div class="chat-container" id="chatContainer">
                 <div class="chat-messages" id="chatMessages"></div>
-                <div class="chat-input-row">
-                    <input type="text" id="chatInput" placeholder="给 CUI4 发送消息..." autocomplete="off">
-                    <button id="chatSendBtn" title="发送"><i class="fas fa-arrow-up"></i></button>
+                <!-- 新版输入框 -->
+                <div class="chat-input-wrapper">
+                    <textarea id="chatInput" placeholder="给 CUI4 发送消息..." rows="1"></textarea>
+                    <div class="chat-input-actions">
+                        <div class="chat-input-toggles">
+                            <button class="chat-toggle-btn" id="deepThinkBtn"><i class="fas fa-brain"></i> 深度思考</button>
+                            <button class="chat-toggle-btn" id="webSearchBtn"><i class="fas fa-globe"></i> 联网搜索</button>
+                        </div>
+                        <button class="send-btn" id="chatSendBtn" title="发送"><i class="fas fa-arrow-up"></i></button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1574,12 +1622,14 @@
     <script>
         /* ================================================================
          * CUI4 主脚本
-         * 关键修复：
+         * 关键修复与更新：
          *  1) 启动覆盖层在 IIFE 开头就被移除，并加多重兜底，避免任何
          *     初始化异常导致页面卡死。
          *  2) 所有初始化用 try/catch 包裹，异常只打印日志不中断主流程。
          *  3) AI 模式：背景透明、纯文字，参考 DeepSeek 网页风格。
-         *  4) 无模型时由本地规则引擎提供简单应答。
+         *  4) 接入真实 Cloudflare Worker 代理调用 DeepSeek。
+         *  5) 输入框左下角添加“深度思考”和“联网搜索”切换按钮。
+         *  6) 开场白精简为“欢迎回来，今天有什么可以帮助你的”。
          * ================================================================ */
         (function() {
             'use strict';
@@ -1799,6 +1849,8 @@
             const chatInput = document.getElementById('chatInput');
             const chatSendBtn = document.getElementById('chatSendBtn');
             const aiModeToggle = document.getElementById('aiModeToggle');
+            const deepThinkBtn = document.getElementById('deepThinkBtn');
+            const webSearchBtn = document.getElementById('webSearchBtn');
 
             /* ===== 倒计时类 ===== */
             class CountdownTimer {
@@ -2076,9 +2128,9 @@
                     if (aiModeToggle) aiModeToggle.classList.toggle('active', prefs.aiMode);
                     if (mainContent) mainContent.classList.toggle('ai-mode', prefs.aiMode);
                     savePrefs();
-                    // 首次开启且消息为空时，加入欢迎语
+                    // 首次开启且消息为空时，加入极简欢迎语
                     if (prefs.aiMode && chatMessages && chatMessages.children.length === 0) {
-                        addChatMessage('system', '你好，我是 CUI4 内置助手。目前处于本地应答模式，可以回答简单问题。\n\n试试问我：\n· 现在几点\n· 今天几号\n· 天气怎么样\n· 倒计时 / 秒表\n· 打开设置 / 打开功能栏\n· 帮助');
+                        addChatMessage('system', '欢迎回来，今天有什么可以帮助你的');
                     }
                     // 切换到 AI 模式后让输入框获得焦点
                     if (prefs.aiMode && chatInput) {
@@ -2097,129 +2149,70 @@
                 } catch (e) {}
             }
 
-            /* ===== 本地规则应答引擎（无需真实模型） ===== */
-            function generateLocalReply(rawText) {
-                const text = (rawText || '').trim();
-                const lower = text.toLowerCase();
-                const now = new Date();
-                const userName = (prefs.userName || 'USER').trim() || 'USER';
-
-                /* —— 问候 —— */
-                if (/^(你好|您好|哈喽|嗨|hi|hello|hey)\b|^(你好|您好|嗨)/.test(lower) || /(你好|您好)/.test(text)) {
-                    const h = now.getHours();
-                    let greet = '你好';
-                    if (h < 6) greet = '凌晨好';
-                    else if (h < 11) greet = '早上好';
-                    else if (h < 14) greet = '中午好';
-                    else if (h < 18) greet = '下午好';
-                    else if (h < 20) greet = '傍晚好';
-                    else greet = '晚上好';
-                    return `${greet}，${userName}。\n我是 CUI4 内置助手，目前运行在本地应答模式。可以试试问我：时间、日期、天气、倒计时、秒表、帮助。`;
-                }
-
-                /* —— 时间 —— */
-                if (/(现在|当前|此刻)?(几|多少)?(点|时间)|time/.test(lower)) {
-                    const hh = String(now.getHours()).padStart(2, '0');
-                    const mm = String(now.getMinutes()).padStart(2, '0');
-                    const ss = String(now.getSeconds()).padStart(2, '0');
-                    return `现在是 ${hh}:${mm}:${ss}。`;
-                }
-
-                /* —— 日期 / 星期 —— */
-                if (/(今天|今日|现在)?(是)?(几号|几月|几月几号|日期|星期几|周几)|date|week/.test(lower)) {
-                    const days = ['日','一','二','三','四','五','六'];
-                    return `今天是 ${now.getFullYear()} 年 ${now.getMonth()+1} 月 ${now.getDate()} 日，星期${days[now.getDay()]}。`;
-                }
-
-                /* —— 天气 / 温度 —— */
-                if (/天气|气温|温度|weather|temperature/.test(lower)) {
-                    const loc = locationText ? locationText.innerText.replace(/^📍\s*/, '') : '当前地区';
-                    const w = weatherTextSpan ? weatherTextSpan.innerText : '☁️ --';
-                    const t = tempTextSpan ? tempTextSpan.innerText : '🌡️ --°C';
-                    return `${loc}\n${w}\n${t}`;
-                }
-
-                /* —— 倒计时 —— */
-                if (/倒计时|countdown/.test(lower)) {
-                    const rem = countdownTimer.getRemaining();
-                    if (rem > 0) return `倒计时剩余 ${formatHHMMSS(rem)}${countdownTimer.isRunning() ? '（正在运行）' : '（已暂停）'}。`;
-                    return '当前没有正在运行的倒计时。可以在功能栏中打开「倒计时」进行设置。';
-                }
-
-                /* —— 秒表 —— */
-                if (/秒表|stopwatch|计时/.test(lower)) {
-                    const ms = stopwatch.getMs();
-                    if (ms > 0) return `秒表读数：${formatStopwatch(ms)}${stopwatch.isRunning() ? '（计时中）' : '（已暂停）'}。`;
-                    return '秒表尚未开始计时。可以在功能栏中打开「秒表」。';
-                }
-
-                /* —— 打开设置 —— */
-                if (/打开?设置|settings|配置/.test(lower)) {
-                    setTimeout(() => { try { openSettingsWithAnimation(); } catch (e) {} }, 250);
-                    return '正在为你打开设置面板…';
-                }
-
-                /* —— 打开功能栏 —— */
-                if (/打开?(功能栏|功能)|工具箱/.test(lower)) {
-                    setTimeout(() => { try { openFuncPanel(); } catch (e) {} }, 250);
-                    return '正在为你展开功能栏…';
-                }
-
-                /* —— 打开任务视图 —— */
-                if (/打开?(任务|任务视图)/.test(lower)) {
-                    setTimeout(() => { try { openTaskPanel(); } catch (e) {} }, 250);
-                    return '正在为你打开任务视图…';
-                }
-
-                /* —— 主题切换 —— */
-                if (/夜间|暗色|深色|dark/.test(lower)) {
-                    prefs.themeMode = 'dark';
-                    try { applyThemeFromPref(); savePrefs(); } catch (e) {}
-                    return '已切换到夜间模式。';
-                }
-                if (/日间|亮色|浅色|白天|light/.test(lower)) {
-                    prefs.themeMode = 'light';
-                    try { applyThemeFromPref(); savePrefs(); } catch (e) {}
-                    return '已切换到日间模式。';
-                }
-                if (/主题|模式|theme/.test(lower)) {
-                    return '可以试试说“夜间模式”或“日间模式”来切换主题。';
-                }
-
-                /* —— 帮助 —— */
-                if (/帮助|help|能做什么|会什么|功能列表/.test(lower)) {
-                    return '我能做的事：\n· 报时 / 报日期 / 报星期\n· 查询当前地区天气\n· 读取倒计时与秒表状态\n· 打开设置 / 功能栏 / 任务视图\n· 切换夜间或日间主题\n\n（当前为本地应答模式，接入真实模型后可支持更复杂的对话。）';
-                }
-
-                /* —— 感谢 —— */
-                if (/谢谢|感谢|thanks|thank you/.test(lower)) {
-                    return '不客气，随时可以找我。';
-                }
-
-                /* —— 告别 —— */
-                if (/再见|拜拜|bye|goodbye/.test(lower)) {
-                    return '再见，期待下次见面。';
-                }
-
-                /* —— 默认 —— */
-                return `我暂时还没理解「${text}」。\n\n当前为本地应答模式，你可以试试：\n· 现在几点\n· 今天几号\n· 天气怎么样\n· 帮助`;
-            }
-
-            function handleChatSend() {
+            /* ===== 真实 API 请求（基于 Cloudflare Worker） ===== */
+            async function handleChatSend() {
                 const text = chatInput.value.trim();
                 if (!text) return;
                 addChatMessage('user', text);
                 chatInput.value = '';
-                // 模拟思考延迟后给出本地应答
-                setTimeout(() => {
-                    try {
-                        const reply = generateLocalReply(text);
-                        addChatMessage('system', reply);
-                    } catch (e) {
-                        addChatMessage('system', '抱歉，处理时出现了小问题。');
-                        console.warn(e);
+                chatInput.style.height = 'auto';
+
+                // 显示“正在思考”
+                const thinkingMsg = document.createElement('div');
+                thinkingMsg.className = 'chat-message system';
+                thinkingMsg.textContent = '正在思考…';
+                chatMessages.appendChild(thinkingMsg);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+
+                // 根据“深度思考”状态选择模型
+                let model = 'deepseek-chat';
+                if (deepThinkBtn.classList.contains('active')) {
+                    model = 'deepseek-reasoner'; // 如果是推理模型
+                }
+
+                // 根据“联网搜索”状态修改提示词（前端模拟，后续可接入真实搜索工具）
+                let finalPrompt = text;
+                if (webSearchBtn.classList.contains('active')) {
+                    finalPrompt = `请联网搜索相关信息后回答：${text}`;
+                }
+
+                try {
+                    // ⚠️ 这里替换为你之前部署的 Cloudflare Worker 地址
+                    const WORKER_URL = 'https://cui4-web.3547873800.workers.dev';
+                    
+                    const response = await fetch(WORKER_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            model: model,
+                            messages: [
+                                { role: 'system', content: '你是 CUI4 的内置 AI 助手。' },
+                                { role: 'user', content: finalPrompt }
+                            ],
+                            stream: false
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (thinkingMsg.parentNode) thinkingMsg.parentNode.removeChild(thinkingMsg);
+
+                    let reply = '抱歉，我没有理解你的问题。';
+                    // 解析 Cloudflare 代理封装好的返回格式 { ok: true, text: "..." }
+                    if (data.ok && data.text) {
+                        reply = data.text;
+                    } else if (data.choices && data.choices[0] && data.choices[0].message) {
+                        reply = data.choices[0].message.content; // 备用解析
+                    } else if (data.error) {
+                        reply = 'API 错误：' + (data.error.message || JSON.stringify(data.error));
                     }
-                }, 320);
+                    addChatMessage('system', reply);
+
+                } catch (error) {
+                    if (thinkingMsg.parentNode) thinkingMsg.parentNode.removeChild(thinkingMsg);
+                    addChatMessage('system', '连接失败，请检查网络或代理配置（国内需配合代理访问 workers.dev，或绑定自定义域名）。');
+                    console.warn('API 请求失败:', error);
+                }
             }
 
             /* ===== 功能栏 ===== */
@@ -3334,7 +3327,26 @@
                 showToast(prefs.aiMode ? 'AI调度已开启' : 'AI调度已关闭');
             });
             chatSendBtn.addEventListener('click', handleChatSend);
-            chatInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleChatSend(); });
+            
+            // 输入框处理：自动调整高度，Shift+Enter换行，Enter发送
+            chatInput.addEventListener('input', function() {
+                this.style.height = 'auto';
+                this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+            });
+            chatInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleChatSend();
+                }
+            });
+
+            // 深度思考和联网搜索切换按钮
+            deepThinkBtn.addEventListener('click', function() {
+                this.classList.toggle('active');
+            });
+            webSearchBtn.addEventListener('click', function() {
+                this.classList.toggle('active');
+            });
 
             /* ===== 键盘 ===== */
             function isInputFocused() {
