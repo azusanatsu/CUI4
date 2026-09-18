@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
-    <title>CUI4 · 功能栏版</title>
+    <title>CUI4</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         /* ===== 全局变量 ===== */
@@ -29,6 +29,7 @@
             --tabs-active: #3a5c8c;
             --func-panel-bg: rgba(245, 247, 252, 0.96);
             --func-card-bg: rgba(255, 255, 255, 0.6);
+            --chat-user-color: #2f5aa8;
         }
         body.dark {
             --bg-gradient: linear-gradient(135deg, #121826 0%, #0f131c 100%);
@@ -45,6 +46,7 @@
             --tabs-active: #6e9eff;
             --func-panel-bg: rgba(18, 22, 32, 0.96);
             --func-card-bg: rgba(30, 34, 46, 0.6);
+            --chat-user-color: #8ab4ff;
         }
         body {
             margin: 0;
@@ -114,11 +116,54 @@
             width: 100%;
             height: 100%;
             display: flex;
-            flex-direction: column;
+            flex-direction: row;
             align-items: center;
             justify-content: center;
             padding: 1rem;
+            transition: padding 0.6s cubic-bezier(0.23, 1, 0.32, 1);
         }
+        .layout-left {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+            transition: width 0.6s cubic-bezier(0.23, 1, 0.32, 1),
+                        padding 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+        }
+        .layout-right {
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+            justify-content: center;
+            width: 0;
+            height: 100%;
+            overflow: hidden;
+            opacity: 0;
+            transition: width 0.6s cubic-bezier(0.23, 1, 0.32, 1),
+                        opacity 0.5s ease;
+        }
+        .main-content.ai-mode {
+            padding: 1.5rem 3rem;
+        }
+        .main-content.ai-mode .layout-left {
+            width: 42%;
+            align-items: flex-start;
+            padding-right: 2.5rem;
+        }
+        .main-content.ai-mode .layout-right {
+            width: 58%;
+            opacity: 1;
+            overflow: visible;
+        }
+        .main-content.ai-mode .time-section {
+            text-align: left;
+        }
+        .main-content.ai-mode .search-wrapper {
+            display: none;
+        }
+
         .time-section {
             text-align: center;
             margin-bottom: 1.5rem;
@@ -129,6 +174,10 @@
             font-weight: 600;
             letter-spacing: 4px;
             font-family: 'JetBrains Mono', monospace;
+            transition: font-size 0.4s ease;
+        }
+        .main-content.ai-mode .clock {
+            font-size: 3.8rem;
         }
         .date {
             font-size: 1.3rem;
@@ -140,6 +189,9 @@
             margin-top: 1rem;
             font-weight: 500;
         }
+        .main-content.ai-mode .greeting {
+            font-size: 1.5rem;
+        }
         .weather-area {
             margin-top: 1rem;
             font-size: 1.1rem;
@@ -149,56 +201,124 @@
             margin: 2px 0;
         }
 
-        /* ===== 左上固定功能 ===== */
-        #fixedWidgets {
-            position: fixed;
-            top: 12px;
-            left: 12px;
-            z-index: 20;
+        /* ===== AI 对话区域（透明 + 纯文字） ===== */
+        .chat-container {
             display: flex;
             flex-direction: column;
-            gap: 8px;
-            pointer-events: none;
+            width: 100%;
+            height: 78vh;
+            max-height: 680px;
+            gap: 1rem;
         }
-        #fixedWidgets>* {
-            pointer-events: auto;
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 1.6rem;
+            background: transparent;
+            border: none;
+            padding: 0.5rem 0.5rem 0.5rem 0;
+            min-height: 120px;
+            scroll-behavior: smooth;
         }
-        .fixed-widget {
-            background: var(--card-glass);
-            backdrop-filter: blur(16px);
-            border: 1px solid var(--glass-border);
-            border-radius: 16px;
-            padding: 8px 14px;
-            min-width: 120px;
-            font-size: 0.9rem;
-            box-shadow: var(--shadow-sm);
-            transition: opacity 0.3s, transform 0.3s;
-            cursor: grab;
-            touch-action: none;
+        .chat-messages::-webkit-scrollbar {
+            width: 3px;
         }
-        .fixed-widget.dragging {
-            opacity: 0.8;
-            transform: scale(0.95);
-            cursor: grabbing;
-            z-index: 100;
+        .chat-messages::-webkit-scrollbar-thumb {
+            background: var(--accent-grey);
+            border-radius: 10px;
+            opacity: 0.5;
         }
-        .fixed-widget .fw-title {
-            font-size: 0.65rem;
-            opacity: 0.6;
-            font-weight: 600;
-            letter-spacing: 1px;
-            margin-bottom: 2px;
+        .chat-message {
+            background: transparent;
+            border: none;
+            padding: 0;
+            max-width: 92%;
+            word-wrap: break-word;
+            white-space: pre-wrap;
+            font-size: 1.02rem;
+            line-height: 1.8;
+            color: var(--text-primary);
+            align-self: flex-start;
+            animation: chatFadeIn 0.4s ease;
         }
-        .fixed-widget .fw-value {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 1.1rem;
+        .chat-message.user {
+            align-self: flex-end;
+            color: var(--chat-user-color);
+            text-align: right;
             font-weight: 500;
+            max-width: 80%;
         }
-        .fixed-widget .fw-value.countdown {
+        .chat-message.system {
+            align-self: flex-start;
+            color: var(--text-primary);
+        }
+        .chat-message.system::before {
+            content: '·  ';
             color: var(--tabs-active);
+            font-weight: 700;
+            opacity: 0.75;
         }
-        .fixed-widget .fw-value.stopwatch {
-            color: #e67e22;
+        @keyframes chatFadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .chat-input-row {
+            display: flex;
+            gap: 0.5rem;
+            width: 100%;
+            align-items: center;
+            background: var(--card-glass);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+            border: 1px solid var(--glass-border);
+            border-radius: 32px;
+            padding: 0.35rem 0.35rem 0.35rem 1.3rem;
+            box-shadow: var(--shadow-sm);
+            transition: box-shadow 0.2s, border-color 0.2s;
+        }
+        .chat-input-row:focus-within {
+            border-color: var(--tabs-active);
+            box-shadow: 0 6px 22px rgba(74, 111, 165, 0.18);
+        }
+        .chat-input-row input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            padding: 0.6rem 0;
+            font-size: 1.02rem;
+            color: var(--text-primary);
+            outline: none;
+            font-weight: 400;
+            font-family: inherit;
+        }
+        .chat-input-row input::placeholder {
+            color: var(--text-secondary);
+            opacity: 0.55;
+        }
+        .chat-input-row button {
+            background: var(--tabs-active);
+            border: none;
+            border-radius: 50%;
+            width: 42px;
+            height: 42px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: transform 0.15s, filter 0.15s;
+            flex-shrink: 0;
+            padding: 0;
+        }
+        .chat-input-row button:hover {
+            filter: brightness(1.1);
+        }
+        .chat-input-row button:active {
+            transform: scale(0.9);
         }
 
         /* ===== 搜索 ===== */
@@ -304,6 +424,58 @@
         }
         .history-item:hover {
             background: rgba(74, 111, 165, 0.2);
+        }
+
+        /* ===== 左上固定功能 ===== */
+        #fixedWidgets {
+            position: fixed;
+            top: 12px;
+            left: 12px;
+            z-index: 20;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            pointer-events: none;
+        }
+        #fixedWidgets>* {
+            pointer-events: auto;
+        }
+        .fixed-widget {
+            background: var(--card-glass);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 8px 14px;
+            min-width: 120px;
+            font-size: 0.9rem;
+            box-shadow: var(--shadow-sm);
+            transition: opacity 0.3s, transform 0.3s;
+            cursor: grab;
+            touch-action: none;
+        }
+        .fixed-widget.dragging {
+            opacity: 0.8;
+            transform: scale(0.95);
+            cursor: grabbing;
+            z-index: 100;
+        }
+        .fixed-widget .fw-title {
+            font-size: 0.65rem;
+            opacity: 0.6;
+            font-weight: 600;
+            letter-spacing: 1px;
+            margin-bottom: 2px;
+        }
+        .fixed-widget .fw-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.1rem;
+            font-weight: 500;
+        }
+        .fixed-widget .fw-value.countdown {
+            color: var(--tabs-active);
+        }
+        .fixed-widget .fw-value.stopwatch {
+            color: #e67e22;
         }
 
         /* ===== 右下设置图标 ===== */
@@ -484,6 +656,7 @@
             cursor: pointer;
             transition: 0.2s;
             position: relative;
+            flex-shrink: 0;
         }
         .toggle-switch.active {
             background: #4a6fa5;
@@ -517,6 +690,7 @@
         button {
             background: none;
             border: none;
+            font-family: inherit;
         }
         .clear-btn {
             background: var(--tabs-active);
@@ -654,7 +828,7 @@
             opacity: 0.6;
         }
 
-        /* ===== 功能栏 (底部滑出) ===== */
+        /* ===== 功能栏 ===== */
         .func-panel {
             position: fixed;
             bottom: 0;
@@ -739,7 +913,7 @@
             opacity: 0.6;
         }
 
-        /* ===== 功能详细面板 (覆盖在功能栏之上) ===== */
+        /* ===== 功能详细面板 ===== */
         .func-detail-overlay {
             position: fixed;
             bottom: 0;
@@ -868,7 +1042,7 @@
             background: var(--accent-grey);
         }
 
-        /* ===== 计算器 (全屏专用) ===== */
+        /* ===== 计算器 ===== */
         #fsCalculatorContainer {
             width: 100%;
             height: 100%;
@@ -1105,6 +1279,57 @@
             .fixed-widget .fw-value {
                 font-size: 0.9rem;
             }
+            /* AI模式响应式 */
+            .main-content.ai-mode {
+                padding: 0.8rem;
+                flex-direction: column;
+                align-items: stretch;
+                justify-content: flex-start;
+            }
+            .main-content.ai-mode .layout-left {
+                width: 100%;
+                align-items: flex-start;
+                padding-right: 0;
+                padding-bottom: 0.5rem;
+                flex: 0 0 auto;
+            }
+            .main-content.ai-mode .layout-right {
+                width: 100%;
+                flex: 1 1 auto;
+                min-height: 0;
+            }
+            .main-content.ai-mode .clock {
+                font-size: 2.2rem;
+                letter-spacing: 2px;
+            }
+            .main-content.ai-mode .date {
+                font-size: 0.9rem;
+                margin-top: 0.2rem;
+            }
+            .main-content.ai-mode .greeting {
+                font-size: 1.1rem;
+                margin-top: 0.3rem;
+            }
+            .main-content.ai-mode .weather-area {
+                font-size: 0.85rem;
+                margin-top: 0.4rem;
+            }
+            .main-content.ai-mode .weather-area p {
+                display: inline;
+                margin-right: 8px;
+            }
+            .chat-container {
+                height: 100%;
+                max-height: none;
+            }
+            .chat-message {
+                font-size: 0.95rem;
+            }
+            .chat-input-row button {
+                width: 38px;
+                height: 38px;
+                font-size: 0.9rem;
+            }
         }
         @keyframes fadeUp {
             from {
@@ -1142,7 +1367,7 @@
     </style>
 </head>
 <body>
-    <div id="startupOverlay" style="position:fixed; inset:0; background:#000; z-index:10000; display:flex; align-items:center; justify-content:center; transition:opacity 0.2s;">
+    <div id="startupOverlay" style="position:fixed; inset:0; background:#000; z-index:10000; display:flex; align-items:center; justify-content:center; transition:opacity 0.35s ease;">
         <div style="color:#ccdeff; font-size:1.8rem; letter-spacing:2px;">Welcome Use CUI4</div>
     </div>
 
@@ -1156,24 +1381,38 @@
     <!-- 左上固定功能 -->
     <div id="fixedWidgets"></div>
 
-    <div class="main-content">
-        <div class="time-section">
-            <div class="clock" id="clockDisplay">--:--:--</div>
-            <div class="date" id="dateDisplay">----.--.--</div>
-            <div class="greeting" id="greetingText">凌晨好, USER</div>
-            <div class="weather-area" id="weatherArea">
-                <p id="locationText">📍 获取位置中...</p>
-                <p id="weatherText">☁️ 加载天气...</p>
-                <p id="tempText">🌡️ --°C</p>
+    <div class="main-content" id="mainContent">
+        <!-- 左侧：时间 + 搜索框 -->
+        <div class="layout-left" id="layoutLeft">
+            <div class="time-section">
+                <div class="clock" id="clockDisplay">--:--:--</div>
+                <div class="date" id="dateDisplay">----.--.--</div>
+                <div class="greeting" id="greetingText">凌晨好, USER</div>
+                <div class="weather-area" id="weatherArea">
+                    <p id="locationText">📍 获取位置中...</p>
+                    <p id="weatherText">☁️ 加载天气...</p>
+                    <p id="tempText">🌡️ --°C</p>
+                </div>
+            </div>
+            <div class="search-wrapper" id="searchWrapper">
+                <div class="search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="searchInput" placeholder="请在此处输入您想要搜索的内容" autocomplete="off">
+                    <button class="search-confirm-btn" id="searchConfirmBtn"><i class="fas fa-arrow-right"></i></button>
+                </div>
+                <div class="history-panel" id="historyPanel"></div>
             </div>
         </div>
-        <div class="search-wrapper">
-            <div class="search-box">
-                <i class="fas fa-search"></i>
-                <input type="text" id="searchInput" placeholder="请在此处输入您想要搜索的内容" autocomplete="off">
-                <button class="search-confirm-btn" id="searchConfirmBtn"><i class="fas fa-arrow-right"></i></button>
+
+        <!-- 右侧：AI对话（仅AI模式下可见） -->
+        <div class="layout-right" id="layoutRight">
+            <div class="chat-container" id="chatContainer">
+                <div class="chat-messages" id="chatMessages"></div>
+                <div class="chat-input-row">
+                    <input type="text" id="chatInput" placeholder="给 CUI4 发送消息..." autocomplete="off">
+                    <button id="chatSendBtn" title="发送"><i class="fas fa-arrow-up"></i></button>
+                </div>
             </div>
-            <div class="history-panel" id="historyPanel"></div>
         </div>
     </div>
 
@@ -1205,6 +1444,14 @@
             <button class="close-panel" id="closeSettingsBtn"><i class="fas fa-times"></i></button>
         </div>
         <div class="settings-scroll">
+            <!-- AI调度 -->
+            <div class="settings-category">
+                <div class="category-title"><i class="fas fa-brain"></i> AI 调度</div>
+                <div class="setting-row">
+                    <div class="setting-info"><span class="setting-label">启用 AI 调度</span><div class="setting-desc">开启后界面切换为对话布局（纯文字·背景透明）</div></div>
+                    <div class="setting-control"><div id="aiModeToggle" class="toggle-switch"></div></div>
+                </div>
+            </div>
             <!-- 主题 -->
             <div class="settings-category">
                 <div class="category-title"><i class="fas fa-palette"></i> 主题模式</div>
@@ -1288,7 +1535,7 @@
         </div>
     </div>
 
-    <!-- 功能栏 (底部) -->
+    <!-- 功能栏 -->
     <div class="func-panel" id="funcPanel">
         <div class="func-header">
             <h3><i class="fas fa-cubes"></i> 功能栏 <span id="funcCountdown" class="countdown-badge">12s</span></h3>
@@ -1302,7 +1549,7 @@
         </div>
     </div>
 
-    <!-- 功能详细面板 (用于倒计时、秒表、Advance) -->
+    <!-- 功能详细面板 -->
     <div class="func-detail-overlay" id="funcDetailOverlay">
         <div class="detail-header">
             <h4 id="detailTitle">功能</h4>
@@ -1311,12 +1558,11 @@
         <div class="func-detail-content" id="detailContent"></div>
     </div>
 
-    <!-- 全屏覆盖 (用于倒计时、秒表、计算器) -->
+    <!-- 全屏覆盖 -->
     <div class="fullscreen-overlay" id="fullscreenOverlay">
         <div class="fs-content" id="fsContent">
             <div class="fs-label" id="fsLabel">倒计时</div>
             <div class="fs-display" id="fsDisplay">00:00:00</div>
-            <!-- 计算器容器 -->
             <div id="fsCalculatorContainer">
                 <div class="calc-display" id="fsCalcDisplay">0</div>
                 <div class="calc-grid" id="fsCalcGrid"></div>
@@ -1326,8 +1572,33 @@
     </div>
 
     <script>
+        /* ================================================================
+         * CUI4 主脚本
+         * 关键修复：
+         *  1) 启动覆盖层在 IIFE 开头就被移除，并加多重兜底，避免任何
+         *     初始化异常导致页面卡死。
+         *  2) 所有初始化用 try/catch 包裹，异常只打印日志不中断主流程。
+         *  3) AI 模式：背景透明、纯文字，参考 DeepSeek 网页风格。
+         *  4) 无模型时由本地规则引擎提供简单应答。
+         * ================================================================ */
         (function() {
-            // ================= IndexedDB 视频壁纸 =================
+            'use strict';
+
+            /* ===== 最优先移除启动覆盖层 ===== */
+            function dismissStartupOverlay() {
+                var ov = document.getElementById('startupOverlay');
+                if (!ov) return;
+                ov.style.opacity = '0';
+                ov.style.pointerEvents = 'none';
+                setTimeout(function() {
+                    try { if (ov.parentNode) ov.parentNode.removeChild(ov); } catch (e) {}
+                }, 400);
+            }
+            dismissStartupOverlay();
+            setTimeout(dismissStartupOverlay, 2000);
+            window.addEventListener('load', function() { setTimeout(dismissStartupOverlay, 100); });
+
+            /* ===== IndexedDB 视频壁纸 ===== */
             const DB_NAME = 'CUI4_WallpaperDB';
             const STORE_NAME = 'videoWallpaper';
             let dbInstance = null;
@@ -1343,8 +1614,7 @@
                             db.createObjectStore(STORE_NAME, { keyPath: 'id' });
                         }
                     };
-                    request.onsuccess = (e) => { dbInstance = e.target.result;
-                        resolve(dbInstance); };
+                    request.onsuccess = (e) => { dbInstance = e.target.result; resolve(dbInstance); };
                     request.onerror = () => reject(request.error);
                 });
             }
@@ -1363,30 +1633,36 @@
             }
 
             async function getVideoBlobFromDB() {
-                const db = await openIndexedDB();
-                return new Promise((resolve) => {
-                    const tx = db.transaction(STORE_NAME, 'readonly');
-                    const store = tx.objectStore(STORE_NAME);
-                    const request = store.get('currentWallpaperVideo');
-                    request.onsuccess = () => { resolve(request.result ? request.result.blob : null); };
-                    request.onerror = () => resolve(null);
-                });
+                try {
+                    const db = await openIndexedDB();
+                    return new Promise((resolve) => {
+                        const tx = db.transaction(STORE_NAME, 'readonly');
+                        const store = tx.objectStore(STORE_NAME);
+                        const request = store.get('currentWallpaperVideo');
+                        request.onsuccess = () => { resolve(request.result ? request.result.blob : null); };
+                        request.onerror = () => resolve(null);
+                    });
+                } catch (e) { return null; }
             }
 
             async function deleteVideoBlobFromDB() {
-                const db = await openIndexedDB();
-                return new Promise((resolve) => {
-                    const tx = db.transaction(STORE_NAME, 'readwrite');
-                    const store = tx.objectStore(STORE_NAME);
-                    const req = store.delete('currentWallpaperVideo');
-                    req.onsuccess = () => resolve();
-                    req.onerror = () => resolve();
-                });
+                try {
+                    const db = await openIndexedDB();
+                    return new Promise((resolve) => {
+                        const tx = db.transaction(STORE_NAME, 'readwrite');
+                        const store = tx.objectStore(STORE_NAME);
+                        const req = store.delete('currentWallpaperVideo');
+                        req.onsuccess = () => resolve();
+                        req.onerror = () => resolve();
+                    });
+                } catch (e) { return; }
             }
 
             function revokeCurrentVideoUrl() {
-                if (currentVideoBlobUrl) { URL.revokeObjectURL(currentVideoBlobUrl);
-                    currentVideoBlobUrl = null; }
+                if (currentVideoBlobUrl) {
+                    try { URL.revokeObjectURL(currentVideoBlobUrl); } catch (e) {}
+                    currentVideoBlobUrl = null;
+                }
             }
 
             async function applyVideoWallpaperFromBlob(blob) {
@@ -1394,19 +1670,19 @@
                 revokeCurrentVideoUrl();
                 const url = URL.createObjectURL(blob);
                 currentVideoBlobUrl = url;
-                const bgVideo = document.getElementById('bgVideo');
-                const bgImageDiv = document.getElementById('bgImage');
-                const defaultBgText = document.getElementById('defaultBgText');
-                bgVideo.pause();
-                bgVideo.src = url;
-                bgVideo.style.display = 'block';
-                bgImageDiv.style.display = 'none';
-                defaultBgText.style.display = 'none';
+                const bgVideoEl = document.getElementById('bgVideo');
+                const bgImageDivEl = document.getElementById('bgImage');
+                const defaultBgTextEl2 = document.getElementById('defaultBgText');
+                bgVideoEl.pause();
+                bgVideoEl.src = url;
+                bgVideoEl.style.display = 'block';
+                bgImageDivEl.style.display = 'none';
+                defaultBgTextEl2.style.display = 'none';
                 const soundEnabled = prefs.wallpaperSoundEnabled;
-                bgVideo.muted = !soundEnabled;
-                bgVideo.volume = (prefs.volume || 70) / 100;
-                bgVideo.load();
-                try { await bgVideo.play(); } catch (e) { console.warn("视频自动播放受限", e); }
+                bgVideoEl.muted = !soundEnabled;
+                bgVideoEl.volume = (prefs.volume || 70) / 100;
+                bgVideoEl.load();
+                try { await bgVideoEl.play(); } catch (e) { console.warn("视频自动播放受限", e); }
                 prefs.wallpaperType = 'video';
                 prefs.wallpaperData = null;
                 savePrefs();
@@ -1414,20 +1690,22 @@
             }
 
             async function restoreVideoWallpaper() {
-                const blob = await getVideoBlobFromDB();
-                if (blob && prefs.wallpaperType === 'video') {
-                    await applyVideoWallpaperFromBlob(blob);
-                } else if (!blob && prefs.wallpaperType === 'video') {
-                    resetToDefaultWallpaper();
-                } else if (prefs.wallpaperType !== 'video') {
-                    const bgVideo = document.getElementById('bgVideo');
-                    bgVideo.style.display = 'none';
-                    bgVideo.pause();
-                    revokeCurrentVideoUrl();
-                }
+                try {
+                    const blob = await getVideoBlobFromDB();
+                    if (blob && prefs.wallpaperType === 'video') {
+                        await applyVideoWallpaperFromBlob(blob);
+                    } else if (!blob && prefs.wallpaperType === 'video') {
+                        resetToDefaultWallpaper();
+                    } else if (prefs.wallpaperType !== 'video') {
+                        const bgVideoEl = document.getElementById('bgVideo');
+                        bgVideoEl.style.display = 'none';
+                        bgVideoEl.pause();
+                        revokeCurrentVideoUrl();
+                    }
+                } catch (e) { console.warn('恢复视频壁纸失败', e); }
             }
 
-            // ================= 数据 =================
+            /* ===== 数据 ===== */
             const locationData = {
                 "中国": { "北京市": ["东城区", "西城区", "朝阳区", "海淀区"], "上海市": ["黄浦区", "徐汇区", "静安区", "浦东新区"],
                     "广东省": ["广州市", "深圳市", "珠海市", "佛山市"], "广西壮族自治区": ["南宁市", "柳州市", "桂林市", "北海市"],
@@ -1454,12 +1732,17 @@
                 wallpaperSoundEnabled: false,
                 pinWidgets: false,
                 dragWidgets: false,
-                准时提醒: false
+                准时提醒: false,
+                aiMode: false
             };
-            let searchHistory = JSON.parse(localStorage.getItem('cui4_search_history') || '[]');
+            let searchHistory = [];
+            try {
+                searchHistory = JSON.parse(localStorage.getItem('cui4_search_history') || '[]');
+                if (!Array.isArray(searchHistory)) searchHistory = [];
+            } catch (e) { searchHistory = []; }
             let taskItems = [];
 
-            // ================= DOM =================
+            /* ===== DOM 引用 ===== */
             const clockEl = document.getElementById('clockDisplay');
             const dateEl = document.getElementById('dateDisplay');
             const greetingEl = document.getElementById('greetingText');
@@ -1511,8 +1794,13 @@
             const fsCalcContainer = document.getElementById('fsCalculatorContainer');
             const fsCalcDisplay = document.getElementById('fsCalcDisplay');
             const fsCalcGrid = document.getElementById('fsCalcGrid');
+            const mainContent = document.getElementById('mainContent');
+            const chatMessages = document.getElementById('chatMessages');
+            const chatInput = document.getElementById('chatInput');
+            const chatSendBtn = document.getElementById('chatSendBtn');
+            const aiModeToggle = document.getElementById('aiModeToggle');
 
-            // ================= 倒计时类 =================
+            /* ===== 倒计时类 ===== */
             class CountdownTimer {
                 constructor() {
                     this.remaining = 0;
@@ -1524,8 +1812,7 @@
                 }
                 start(seconds) {
                     if (this.running) return;
-                    if (seconds !== undefined) { this.remaining = seconds;
-                        this.total = seconds; }
+                    if (seconds !== undefined) { this.remaining = seconds; this.total = seconds; }
                     if (this.remaining <= 0) return;
                     this.running = true;
                     this.interval = setInterval(() => {
@@ -1539,8 +1826,7 @@
                 }
                 stop() {
                     this.running = false;
-                    if (this.interval) { clearInterval(this.interval);
-                        this.interval = null; }
+                    if (this.interval) { clearInterval(this.interval); this.interval = null; }
                 }
                 reset(seconds) {
                     this.stop();
@@ -1552,7 +1838,7 @@
                 isRunning() { return this.running; }
             }
 
-            // ================= 秒表类 =================
+            /* ===== 秒表类 ===== */
             class Stopwatch {
                 constructor() {
                     this.ms = 0;
@@ -1571,8 +1857,7 @@
                 }
                 pause() {
                     this.running = false;
-                    if (this.interval) { clearInterval(this.interval);
-                        this.interval = null; }
+                    if (this.interval) { clearInterval(this.interval); this.interval = null; }
                 }
                 reset() {
                     this.pause();
@@ -1583,12 +1868,12 @@
                 isRunning() { return this.running; }
             }
 
-            // ================= 音效 =================
+            /* ===== 音效 ===== */
             let audioCtx = null;
             let currentVolumePercent = prefs.volume;
 
             function getAudioContext() {
-                if (!audioCtx) { audioCtx = new(window.AudioContext || window.webkitAudioContext)(); }
+                if (!audioCtx) { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
                 return audioCtx;
             }
 
@@ -1626,36 +1911,39 @@
             function applyVolumeToMedia(vol) {
                 currentVolumePercent = vol;
                 const volDecimal = vol / 100;
-                if (bgVideo && !bgVideo.muted) bgVideo.volume = volDecimal;
-                document.querySelectorAll('audio, video').forEach(media => {
-                    if (media !== bgVideo || !bgVideo.muted) media.volume = volDecimal;
-                });
+                try {
+                    if (bgVideo && !bgVideo.muted) bgVideo.volume = volDecimal;
+                    document.querySelectorAll('audio, video').forEach(media => {
+                        if (media !== bgVideo || !bgVideo.muted) media.volume = volDecimal;
+                    });
+                } catch (e) {}
             }
             let volumeFeedbackTimer = null;
 
             function setVolumeValue(vol, playSound = true) {
                 prefs.volume = Math.min(100, Math.max(0, vol));
-                volumeSlider.value = prefs.volume;
+                if (volumeSlider) volumeSlider.value = prefs.volume;
                 applyVolumeToMedia(prefs.volume);
                 savePrefs();
                 if (playSound) {
                     if (volumeFeedbackTimer) clearTimeout(volumeFeedbackTimer);
-                    volumeFeedbackTimer = setTimeout(() => { playFeedbackSound();
-                        volumeFeedbackTimer = null; }, 500);
+                    volumeFeedbackTimer = setTimeout(() => { playFeedbackSound(); volumeFeedbackTimer = null; }, 500);
                 }
             }
 
-            // ================= 工具 =================
-            function escapeHtml(str) { return String(str).replace(/[&<>]/g, m => ({ '&': '&amp;', '<': '&lt;',
-                    '>': '&gt;' } [m])); }
+            /* ===== 工具 ===== */
+            function escapeHtml(str) {
+                return String(str).replace(/[&<>]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[m]));
+            }
 
             function showToast(msg) {
-                const toast = document.createElement('div');
-                toast.textContent = msg;
-                toast.style.cssText =
-                    'position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:var(--tabs-active, #4a6fa5);color:white;padding:10px 20px;border-radius:30px;z-index:9999;font-size:14px;box-shadow:0 6px 16px rgba(0,0,0,0.2);';
-                document.body.appendChild(toast);
-                setTimeout(() => toast.remove(), 2000);
+                try {
+                    const toast = document.createElement('div');
+                    toast.textContent = msg;
+                    toast.style.cssText = 'position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:var(--tabs-active, #4a6fa5);color:white;padding:10px 20px;border-radius:30px;z-index:9999;font-size:14px;box-shadow:0 6px 16px rgba(0,0,0,0.2);';
+                    document.body.appendChild(toast);
+                    setTimeout(() => { try { toast.remove(); } catch (e) {} }, 2000);
+                } catch (e) {}
             }
 
             function formatHHMMSS(sec) {
@@ -1680,8 +1968,7 @@
                     reader.onload = function(e) {
                         const img = new Image();
                         img.onload = function() {
-                            let width = img.width,
-                                height = img.height;
+                            let width = img.width, height = img.height;
                             let needCompress = false;
                             if (width > maxWidth || height > maxHeight) {
                                 needCompress = true;
@@ -1705,34 +1992,38 @@
                 });
             }
 
-            // ================= 壁纸 =================
+            /* ===== 壁纸 ===== */
             async function resetToDefaultWallpaper() {
                 revokeCurrentVideoUrl();
-                bgVideo.pause();
-                bgVideo.style.display = 'none';
-                bgVideo.src = '';
-                bgVideo.load();
+                try {
+                    bgVideo.pause();
+                    bgVideo.style.display = 'none';
+                    bgVideo.src = '';
+                    bgVideo.load();
+                } catch (e) {}
                 bgImageDiv.style.display = 'none';
                 defaultBgTextEl.style.display = 'block';
                 bgImageDiv.style.backgroundImage = '';
                 prefs.wallpaperType = 'default';
                 prefs.wallpaperData = null;
-                await deleteVideoBlobFromDB();
+                try { await deleteVideoBlobFromDB(); } catch (e) {}
                 savePrefs();
                 showToast('已恢复默认壁纸');
             }
 
             function setWallpaperImageFromDataURL(dataUrl) {
                 revokeCurrentVideoUrl();
-                bgVideo.pause();
-                bgVideo.style.display = 'none';
-                bgVideo.src = '';
+                try {
+                    bgVideo.pause();
+                    bgVideo.style.display = 'none';
+                    bgVideo.src = '';
+                } catch (e) {}
                 bgImageDiv.style.display = 'block';
                 bgImageDiv.style.backgroundImage = `url(${dataUrl})`;
                 defaultBgTextEl.style.display = 'none';
                 prefs.wallpaperType = 'image';
                 prefs.wallpaperData = dataUrl;
-                deleteVideoBlobFromDB().catch(console.warn);
+                try { deleteVideoBlobFromDB(); } catch (e) {}
                 savePrefs();
                 showToast('壁纸已更换');
             }
@@ -1751,10 +2042,12 @@
                     }
                     wallpaperUpload.value = '';
                 } else if (file.type === 'video/mp4') {
-                    const blob = file.slice(0, file.size, file.type);
-                    await saveVideoBlobToDB(blob);
-                    await applyVideoWallpaperFromBlob(blob);
-                    showToast('视频壁纸已保存 (刷新后仍然存在)');
+                    try {
+                        const blob = file.slice(0, file.size, file.type);
+                        await saveVideoBlobToDB(blob);
+                        await applyVideoWallpaperFromBlob(blob);
+                        showToast('视频壁纸已保存 (刷新后仍然存在)');
+                    } catch (e) { console.warn(e); }
                     wallpaperUpload.value = '';
                 } else {
                     alert('仅支持jpg/png/mp4');
@@ -1772,9 +2065,164 @@
                 savePrefs();
             }
 
-            function applyBrightness(val) { brightnessMask.style.backgroundColor = `rgba(0,0,0,${(100-val)/100})`; }
+            function applyBrightness(val) {
+                brightnessMask.style.backgroundColor = `rgba(0,0,0,${(100-val)/100})`;
+            }
 
-            // ================= 功能栏 =================
+            /* ===== AI 调度 ===== */
+            function setAIMode(enabled) {
+                try {
+                    prefs.aiMode = !!enabled;
+                    if (aiModeToggle) aiModeToggle.classList.toggle('active', prefs.aiMode);
+                    if (mainContent) mainContent.classList.toggle('ai-mode', prefs.aiMode);
+                    savePrefs();
+                    // 首次开启且消息为空时，加入欢迎语
+                    if (prefs.aiMode && chatMessages && chatMessages.children.length === 0) {
+                        addChatMessage('system', '你好，我是 CUI4 内置助手。目前处于本地应答模式，可以回答简单问题。\n\n试试问我：\n· 现在几点\n· 今天几号\n· 天气怎么样\n· 倒计时 / 秒表\n· 打开设置 / 打开功能栏\n· 帮助');
+                    }
+                    // 切换到 AI 模式后让输入框获得焦点
+                    if (prefs.aiMode && chatInput) {
+                        setTimeout(() => { try { chatInput.focus(); } catch (e) {} }, 500);
+                    }
+                } catch (e) { console.warn('setAIMode 出错', e); }
+            }
+
+            function addChatMessage(type, text) {
+                try {
+                    const msg = document.createElement('div');
+                    msg.className = `chat-message ${type}`;
+                    msg.textContent = text;
+                    chatMessages.appendChild(msg);
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                } catch (e) {}
+            }
+
+            /* ===== 本地规则应答引擎（无需真实模型） ===== */
+            function generateLocalReply(rawText) {
+                const text = (rawText || '').trim();
+                const lower = text.toLowerCase();
+                const now = new Date();
+                const userName = (prefs.userName || 'USER').trim() || 'USER';
+
+                /* —— 问候 —— */
+                if (/^(你好|您好|哈喽|嗨|hi|hello|hey)\b|^(你好|您好|嗨)/.test(lower) || /(你好|您好)/.test(text)) {
+                    const h = now.getHours();
+                    let greet = '你好';
+                    if (h < 6) greet = '凌晨好';
+                    else if (h < 11) greet = '早上好';
+                    else if (h < 14) greet = '中午好';
+                    else if (h < 18) greet = '下午好';
+                    else if (h < 20) greet = '傍晚好';
+                    else greet = '晚上好';
+                    return `${greet}，${userName}。\n我是 CUI4 内置助手，目前运行在本地应答模式。可以试试问我：时间、日期、天气、倒计时、秒表、帮助。`;
+                }
+
+                /* —— 时间 —— */
+                if (/(现在|当前|此刻)?(几|多少)?(点|时间)|time/.test(lower)) {
+                    const hh = String(now.getHours()).padStart(2, '0');
+                    const mm = String(now.getMinutes()).padStart(2, '0');
+                    const ss = String(now.getSeconds()).padStart(2, '0');
+                    return `现在是 ${hh}:${mm}:${ss}。`;
+                }
+
+                /* —— 日期 / 星期 —— */
+                if (/(今天|今日|现在)?(是)?(几号|几月|几月几号|日期|星期几|周几)|date|week/.test(lower)) {
+                    const days = ['日','一','二','三','四','五','六'];
+                    return `今天是 ${now.getFullYear()} 年 ${now.getMonth()+1} 月 ${now.getDate()} 日，星期${days[now.getDay()]}。`;
+                }
+
+                /* —— 天气 / 温度 —— */
+                if (/天气|气温|温度|weather|temperature/.test(lower)) {
+                    const loc = locationText ? locationText.innerText.replace(/^📍\s*/, '') : '当前地区';
+                    const w = weatherTextSpan ? weatherTextSpan.innerText : '☁️ --';
+                    const t = tempTextSpan ? tempTextSpan.innerText : '🌡️ --°C';
+                    return `${loc}\n${w}\n${t}`;
+                }
+
+                /* —— 倒计时 —— */
+                if (/倒计时|countdown/.test(lower)) {
+                    const rem = countdownTimer.getRemaining();
+                    if (rem > 0) return `倒计时剩余 ${formatHHMMSS(rem)}${countdownTimer.isRunning() ? '（正在运行）' : '（已暂停）'}。`;
+                    return '当前没有正在运行的倒计时。可以在功能栏中打开「倒计时」进行设置。';
+                }
+
+                /* —— 秒表 —— */
+                if (/秒表|stopwatch|计时/.test(lower)) {
+                    const ms = stopwatch.getMs();
+                    if (ms > 0) return `秒表读数：${formatStopwatch(ms)}${stopwatch.isRunning() ? '（计时中）' : '（已暂停）'}。`;
+                    return '秒表尚未开始计时。可以在功能栏中打开「秒表」。';
+                }
+
+                /* —— 打开设置 —— */
+                if (/打开?设置|settings|配置/.test(lower)) {
+                    setTimeout(() => { try { openSettingsWithAnimation(); } catch (e) {} }, 250);
+                    return '正在为你打开设置面板…';
+                }
+
+                /* —— 打开功能栏 —— */
+                if (/打开?(功能栏|功能)|工具箱/.test(lower)) {
+                    setTimeout(() => { try { openFuncPanel(); } catch (e) {} }, 250);
+                    return '正在为你展开功能栏…';
+                }
+
+                /* —— 打开任务视图 —— */
+                if (/打开?(任务|任务视图)/.test(lower)) {
+                    setTimeout(() => { try { openTaskPanel(); } catch (e) {} }, 250);
+                    return '正在为你打开任务视图…';
+                }
+
+                /* —— 主题切换 —— */
+                if (/夜间|暗色|深色|dark/.test(lower)) {
+                    prefs.themeMode = 'dark';
+                    try { applyThemeFromPref(); savePrefs(); } catch (e) {}
+                    return '已切换到夜间模式。';
+                }
+                if (/日间|亮色|浅色|白天|light/.test(lower)) {
+                    prefs.themeMode = 'light';
+                    try { applyThemeFromPref(); savePrefs(); } catch (e) {}
+                    return '已切换到日间模式。';
+                }
+                if (/主题|模式|theme/.test(lower)) {
+                    return '可以试试说“夜间模式”或“日间模式”来切换主题。';
+                }
+
+                /* —— 帮助 —— */
+                if (/帮助|help|能做什么|会什么|功能列表/.test(lower)) {
+                    return '我能做的事：\n· 报时 / 报日期 / 报星期\n· 查询当前地区天气\n· 读取倒计时与秒表状态\n· 打开设置 / 功能栏 / 任务视图\n· 切换夜间或日间主题\n\n（当前为本地应答模式，接入真实模型后可支持更复杂的对话。）';
+                }
+
+                /* —— 感谢 —— */
+                if (/谢谢|感谢|thanks|thank you/.test(lower)) {
+                    return '不客气，随时可以找我。';
+                }
+
+                /* —— 告别 —— */
+                if (/再见|拜拜|bye|goodbye/.test(lower)) {
+                    return '再见，期待下次见面。';
+                }
+
+                /* —— 默认 —— */
+                return `我暂时还没理解「${text}」。\n\n当前为本地应答模式，你可以试试：\n· 现在几点\n· 今天几号\n· 天气怎么样\n· 帮助`;
+            }
+
+            function handleChatSend() {
+                const text = chatInput.value.trim();
+                if (!text) return;
+                addChatMessage('user', text);
+                chatInput.value = '';
+                // 模拟思考延迟后给出本地应答
+                setTimeout(() => {
+                    try {
+                        const reply = generateLocalReply(text);
+                        addChatMessage('system', reply);
+                    } catch (e) {
+                        addChatMessage('system', '抱歉，处理时出现了小问题。');
+                        console.warn(e);
+                    }
+                }, 320);
+            }
+
+            /* ===== 功能栏 ===== */
             let funcCountdownTimer = null;
             let funcRemaining = 12;
             let funcPanelOpen = false;
@@ -1809,15 +2257,12 @@
                 funcCountdownTimer = setInterval(() => {
                     funcRemaining--;
                     updateFuncBadge();
-                    if (funcRemaining <= 0) {
-                        closeFuncPanel();
-                    }
+                    if (funcRemaining <= 0) closeFuncPanel();
                 }, 1000);
             }
 
             function stopFuncCountdown() {
-                if (funcCountdownTimer) { clearInterval(funcCountdownTimer);
-                    funcCountdownTimer = null; }
+                if (funcCountdownTimer) { clearInterval(funcCountdownTimer); funcCountdownTimer = null; }
             }
 
             function resetFuncCountdown() {
@@ -1828,7 +2273,7 @@
                 funcCountdownTimer = setInterval(() => {
                     funcRemaining--;
                     updateFuncBadge();
-                    if (funcRemaining <= 0) { closeFuncPanel(); }
+                    if (funcRemaining <= 0) closeFuncPanel();
                 }, 1000);
             }
 
@@ -1852,8 +2297,7 @@
             }
 
             function stopNonRealTimer() {
-                if (nonRealTimer) { clearInterval(nonRealTimer);
-                    nonRealTimer = null; }
+                if (nonRealTimer) { clearInterval(nonRealTimer); nonRealTimer = null; }
             }
 
             function resetNonRealTimer() {
@@ -1875,22 +2319,14 @@
             }
 
             function openDetail(funcName) {
-                if (funcName === 'calculator') {
-                    // 计算器直接全屏
-                    enterFullscreen('calculator');
-                    return;
-                }
+                if (funcName === 'calculator') { enterFullscreen('calculator'); return; }
                 currentDetailFunc = funcName;
                 funcDetailOverlay.classList.add('open');
                 stopFuncCountdown();
                 renderDetail(funcName);
-                detailTitle.innerText = funcName === 'advance' ? 'Advance' :
-                    funcName.charAt(0).toUpperCase() + funcName.slice(1);
-                if (funcName === 'advance') {
-                    startNonRealTimer();
-                } else {
-                    stopNonRealTimer();
-                }
+                detailTitle.innerText = funcName === 'advance' ? 'Advance' : funcName.charAt(0).toUpperCase() + funcName.slice(1);
+                if (funcName === 'advance') startNonRealTimer();
+                else stopNonRealTimer();
             }
 
             function closeDetail() {
@@ -1907,7 +2343,7 @@
                 else if (funcName === 'advance') renderAdvanceDetail();
             }
 
-            // ---- 倒计时 ----
+            /* ---- 倒计时 ---- */
             const countdownTimer = new CountdownTimer();
             let cdInputSeconds = 60;
 
@@ -1933,7 +2369,7 @@
                     if (e.touches.length === 1) {
                         let lastTap = display._lastTap || 0;
                         let now = Date.now();
-                        if (now - lastTap < 400) { enterFullscreen('countdown'); }
+                        if (now - lastTap < 400) enterFullscreen('countdown');
                         display._lastTap = now;
                     }
                 });
@@ -1946,15 +2382,12 @@
 
                 const updateDisplay = () => {
                     const rem = countdownTimer.getRemaining();
-                    document.getElementById('cdDisplay').innerText = formatHHMMSS(rem > 0 ? rem : 0);
+                    const el = document.getElementById('cdDisplay');
+                    if (el) el.innerText = formatHHMMSS(rem > 0 ? rem : 0);
                     updateFixedWidgets();
                 };
                 countdownTimer.onTick = updateDisplay;
-                countdownTimer.onComplete = () => {
-                    playDoubleBeep();
-                    updateDisplay();
-                    updateFixedWidgets();
-                };
+                countdownTimer.onComplete = () => { playDoubleBeep(); updateDisplay(); updateFixedWidgets(); };
 
                 startBtn.addEventListener('click', () => {
                     const val = parseInt(cdInput.value);
@@ -1972,9 +2405,8 @@
                     }
                 });
                 pauseBtn.addEventListener('click', () => {
-                    if (countdownTimer.isRunning()) {
-                        countdownTimer.stop();
-                    } else {
+                    if (countdownTimer.isRunning()) countdownTimer.stop();
+                    else {
                         const rem = countdownTimer.getRemaining();
                         if (rem > 0) countdownTimer.start();
                     }
@@ -1990,7 +2422,7 @@
                 updateDisplay();
             }
 
-            // ---- 秒表 ----
+            /* ---- 秒表 ---- */
             const stopwatch = new Stopwatch();
 
             function renderStopwatchDetail() {
@@ -2014,7 +2446,7 @@
                     if (e.touches.length === 1) {
                         let lastTap = display._lastTap || 0;
                         let now = Date.now();
-                        if (now - lastTap < 400) { enterFullscreen('stopwatch'); }
+                        if (now - lastTap < 400) enterFullscreen('stopwatch');
                         display._lastTap = now;
                     }
                 });
@@ -2022,28 +2454,26 @@
 
                 const updateDisplay = () => {
                     const ms = stopwatch.getMs();
-                    document.getElementById('swDisplay').innerText = formatStopwatch(ms);
+                    const el = document.getElementById('swDisplay');
+                    if (el) el.innerText = formatStopwatch(ms);
                     updateFixedWidgets();
                 };
                 stopwatch.onTick = updateDisplay;
 
-                document.getElementById('swStartBtn').addEventListener('click', () => { stopwatch.start();
-                    updateDisplay(); });
-                document.getElementById('swPauseBtn').addEventListener('click', () => { stopwatch.pause();
-                    updateDisplay(); });
-                document.getElementById('swResetBtn').addEventListener('click', () => { stopwatch.reset();
-                    updateDisplay(); });
+                document.getElementById('swStartBtn').addEventListener('click', () => { stopwatch.start(); updateDisplay(); });
+                document.getElementById('swPauseBtn').addEventListener('click', () => { stopwatch.pause(); updateDisplay(); });
+                document.getElementById('swResetBtn').addEventListener('click', () => { stopwatch.reset(); updateDisplay(); });
                 updateDisplay();
             }
 
-            // ---- 计算器 (全屏) ----
+            /* ---- 计算器 ---- */
             let calcDisplayStr = '0';
 
             function renderCalculatorFullscreen() {
                 fsCalcContainer.classList.add('active');
+                fsCalcContainer.style.display = 'flex';
                 fsDisplay.style.display = 'none';
                 fsLabel.style.display = 'none';
-                // 构建计算器按钮
                 fsCalcGrid.innerHTML = '';
                 const buttons = [
                     ['(', ')', 'C', '⌫', '÷'],
@@ -2063,33 +2493,27 @@
                         btn.innerText = label;
                         btn.dataset.label = label;
                         btn.addEventListener('click', () => handleCalcInput(label));
-                        btn.addEventListener('touchstart', (e) => { e.preventDefault();
-                            handleCalcInput(label); }, { passive: false });
+                        btn.addEventListener('touchstart', (e) => { e.preventDefault(); handleCalcInput(label); }, { passive: false });
                         fsCalcGrid.appendChild(btn);
                     });
                 });
                 calcDisplayStr = '0';
                 updateCalcDisplay();
-                // 键盘监听
                 document.addEventListener('keydown', calcKeyHandler);
             }
 
             function handleCalcInput(label) {
-                if (label === 'C') { calcDisplayStr = '0';
-                    updateCalcDisplay(); return; }
-                if (label === '⌫') { calcDisplayStr = calcDisplayStr.slice(0, -1) || '0';
-                    updateCalcDisplay(); return; }
+                if (label === 'C') { calcDisplayStr = '0'; updateCalcDisplay(); return; }
+                if (label === '⌫') { calcDisplayStr = calcDisplayStr.slice(0, -1) || '0'; updateCalcDisplay(); return; }
                 if (label === '=') {
                     try {
-                        let expr = calcDisplayStr.replace(/×/g, '*').replace(/÷/g, '/').replace(/x²/g, '**2').replace(
-                            /√\(/g, 'Math.sqrt(').replace(/1\/x/g, '1/');
+                        let expr = calcDisplayStr.replace(/×/g, '*').replace(/÷/g, '/').replace(/x²/g, '**2').replace(/√\(/g, 'Math.sqrt(').replace(/1\/x/g, '1/');
                         const result = Function('"use strict"; return (' + expr + ')')();
                         if (typeof result === 'number' && !isNaN(result) && isFinite(result)) {
                             calcDisplayStr = String(parseFloat(result.toFixed(10)));
                         } else { calcDisplayStr = '错误'; }
-                        updateCalcDisplay();
-                    } catch (e) { calcDisplayStr = '错误';
-                        updateCalcDisplay(); }
+                    } catch (e) { calcDisplayStr = '错误'; }
+                    updateCalcDisplay();
                     return;
                 }
                 if (label === '±') {
@@ -2103,17 +2527,16 @@
                         const val = parseFloat(calcDisplayStr);
                         if (!isNaN(val) && val >= 0) calcDisplayStr = String(Math.sqrt(val));
                         else calcDisplayStr = '错误';
-                        updateCalcDisplay();
-                    } catch (e) { calcDisplayStr = '错误';
-                        updateCalcDisplay(); }
+                    } catch (e) { calcDisplayStr = '错误'; }
+                    updateCalcDisplay();
                     return;
                 }
                 if (label === 'x²') {
                     try {
                         const val = parseFloat(calcDisplayStr);
                         if (!isNaN(val)) calcDisplayStr = String(val * val);
-                        updateCalcDisplay();
                     } catch (e) {}
+                    updateCalcDisplay();
                     return;
                 }
                 if (label === '1/x') {
@@ -2121,16 +2544,16 @@
                         const val = parseFloat(calcDisplayStr);
                         if (!isNaN(val) && val !== 0) calcDisplayStr = String(1 / val);
                         else calcDisplayStr = '错误';
-                        updateCalcDisplay();
                     } catch (e) {}
+                    updateCalcDisplay();
                     return;
                 }
                 if (label === '%') {
                     try {
                         const val = parseFloat(calcDisplayStr);
                         if (!isNaN(val)) calcDisplayStr = String(val / 100);
-                        updateCalcDisplay();
                     } catch (e) {}
+                    updateCalcDisplay();
                     return;
                 }
                 if (calcDisplayStr === '0' && label !== '.') calcDisplayStr = label;
@@ -2138,46 +2561,28 @@
                 updateCalcDisplay();
             }
 
-            function updateCalcDisplay() {
-                fsCalcDisplay.innerText = calcDisplayStr || '0';
-            }
+            function updateCalcDisplay() { fsCalcDisplay.innerText = calcDisplayStr || '0'; }
 
             function calcKeyHandler(e) {
                 if (!fullscreenOverlay.classList.contains('active')) return;
                 if (fsCalcContainer.style.display !== 'flex') return;
                 const key = e.key;
-                if (key >= '0' && key <= '9') { handleCalcInput(key);
-                    e.preventDefault(); return; }
-                if (key === '.') { handleCalcInput('.');
-                    e.preventDefault(); return; }
-                if (key === '+') { handleCalcInput('+');
-                    e.preventDefault(); return; }
-                if (key === '-') { handleCalcInput('-');
-                    e.preventDefault(); return; }
-                if (key === '*') { handleCalcInput('×');
-                    e.preventDefault(); return; }
-                if (key === '/') { handleCalcInput('÷');
-                    e.preventDefault(); return; }
-                if (key === 'Enter' || key === '=') { handleCalcInput('=');
-                    e.preventDefault(); return; }
-                if (key === 'Backspace') { handleCalcInput('⌫');
-                    e.preventDefault(); return; }
-                if (key === 'Escape' || key === 'c' || key === 'C') { handleCalcInput('C');
-                    e.preventDefault(); return; }
-                if (key === '(') { handleCalcInput('(');
-                    e.preventDefault(); return; }
-                if (key === ')') { handleCalcInput(')');
-                    e.preventDefault(); return; }
-                if (key === '%') { handleCalcInput('%');
-                    e.preventDefault(); return; }
-                // Delete 键关闭全屏计算器
-                if (key === 'Delete') {
-                    e.preventDefault();
-                    exitFullscreen();
-                }
+                if (key >= '0' && key <= '9') { handleCalcInput(key); e.preventDefault(); return; }
+                if (key === '.') { handleCalcInput('.'); e.preventDefault(); return; }
+                if (key === '+') { handleCalcInput('+'); e.preventDefault(); return; }
+                if (key === '-') { handleCalcInput('-'); e.preventDefault(); return; }
+                if (key === '*') { handleCalcInput('×'); e.preventDefault(); return; }
+                if (key === '/') { handleCalcInput('÷'); e.preventDefault(); return; }
+                if (key === 'Enter' || key === '=') { handleCalcInput('='); e.preventDefault(); return; }
+                if (key === 'Backspace') { handleCalcInput('⌫'); e.preventDefault(); return; }
+                if (key === 'Escape' || key === 'c' || key === 'C') { handleCalcInput('C'); e.preventDefault(); return; }
+                if (key === '(') { handleCalcInput('('); e.preventDefault(); return; }
+                if (key === ')') { handleCalcInput(')'); e.preventDefault(); return; }
+                if (key === '%') { handleCalcInput('%'); e.preventDefault(); return; }
+                if (key === 'Delete') { e.preventDefault(); exitFullscreen(); }
             }
 
-            // ---- Advance ----
+            /* ---- Advance ---- */
             function renderAdvanceDetail() {
                 const div = document.createElement('div');
                 div.className = 'advance-settings';
@@ -2227,10 +2632,7 @@
                     resetNonRealTimer();
                 });
                 document.getElementById('advDragToggle').addEventListener('click', function() {
-                    if (!prefs.pinWidgets) {
-                        showToast('请先开启「将功能固定到主页」');
-                        return;
-                    }
+                    if (!prefs.pinWidgets) { showToast('请先开启「将功能固定到主页」'); return; }
                     prefs.dragWidgets = !prefs.dragWidgets;
                     this.classList.toggle('active', prefs.dragWidgets);
                     savePrefs();
@@ -2240,9 +2642,8 @@
                 });
             }
 
-            // ================= 整点提醒 =================
+            /* ===== 整点提醒 ===== */
             let lastCheckedHour = -1;
-
             function checkHourlyAlarm() {
                 if (!prefs.准时提醒) return;
                 const now = new Date();
@@ -2258,7 +2659,7 @@
             }
             setInterval(checkHourlyAlarm, 1000);
 
-            // ================= 全屏 =================
+            /* ===== 全屏 ===== */
             let fsMode = null;
             let fsInterval = null;
 
@@ -2266,25 +2667,24 @@
                 if (fullscreenOverlay.classList.contains('active')) return;
                 fsMode = mode;
                 fullscreenOverlay.classList.add('active');
-                const bg = prefs.wallpaperType === 'image' && prefs.wallpaperData ? `url(${prefs.wallpaperData})` :
-                    'var(--bg-gradient)';
-                fullscreenOverlay.style.background = bg;
-                if (prefs.wallpaperType === 'image' && prefs.wallpaperData) {
-                    fullscreenOverlay.style.backgroundSize = 'cover';
-                    fullscreenOverlay.style.backgroundPosition = 'center';
-                } else {
-                    fullscreenOverlay.style.background = 'var(--bg-gradient)';
-                }
-                // 亮度遮罩
-                const mask = document.createElement('div');
-                mask.style.cssText =
-                    `position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,${(100-prefs.brightness)/100});pointer-events:none;z-index:1;`;
-                const existing = fullscreenOverlay.querySelector('.fs-mask');
-                if (existing) existing.remove();
-                mask.className = 'fs-mask';
-                fullscreenOverlay.insertBefore(mask, fullscreenOverlay.firstChild);
+                try {
+                    if (prefs.wallpaperType === 'image' && prefs.wallpaperData) {
+                        fullscreenOverlay.style.background = `url(${prefs.wallpaperData})`;
+                        fullscreenOverlay.style.backgroundSize = 'cover';
+                        fullscreenOverlay.style.backgroundPosition = 'center';
+                    } else {
+                        fullscreenOverlay.style.background = 'var(--bg-gradient)';
+                        fullscreenOverlay.style.backgroundSize = '';
+                        fullscreenOverlay.style.backgroundPosition = '';
+                    }
+                    const mask = document.createElement('div');
+                    mask.style.cssText = `position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,${(100-prefs.brightness)/100});pointer-events:none;z-index:1;`;
+                    const existing = fullscreenOverlay.querySelector('.fs-mask');
+                    if (existing) existing.remove();
+                    mask.className = 'fs-mask';
+                    fullscreenOverlay.insertBefore(mask, fullscreenOverlay.firstChild);
+                } catch (e) {}
 
-                // 重置显示
                 fsDisplay.style.display = '';
                 fsLabel.style.display = '';
                 fsCalcContainer.classList.remove('active');
@@ -2304,30 +2704,22 @@
                     fsLabel.innerText = '⏱️ 秒表';
                     fsDisplay.innerText = formatStopwatch(stopwatch.getMs());
                     if (fsInterval) clearInterval(fsInterval);
-                    fsInterval = setInterval(() => {
-                        fsDisplay.innerText = formatStopwatch(stopwatch.getMs());
-                    }, 20);
+                    fsInterval = setInterval(() => { fsDisplay.innerText = formatStopwatch(stopwatch.getMs()); }, 20);
                 } else if (mode === 'calculator') {
                     fsCalcContainer.style.display = 'flex';
                     renderCalculatorFullscreen();
-                    // 暂停功能栏倒计时
                     if (funcPanelOpen) stopFuncCountdown();
                 }
-                // 关闭其他面板
                 if (funcDetailOverlay.classList.contains('open')) closeDetail();
                 if (settingsPanel.classList.contains('open')) closeSettings();
                 if (taskPanel.classList.contains('open')) closeTaskPanel();
-                if (funcPanelOpen) {
-                    // 功能栏倒计时已暂停，隐藏功能栏
-                    funcPanel.style.opacity = '0';
-                }
+                if (funcPanelOpen) funcPanel.style.opacity = '0';
             }
 
             function exitFullscreen() {
                 fullscreenOverlay.classList.remove('active');
                 fsMode = null;
-                if (fsInterval) { clearInterval(fsInterval);
-                    fsInterval = null; }
+                if (fsInterval) { clearInterval(fsInterval); fsInterval = null; }
                 const mask = fullscreenOverlay.querySelector('.fs-mask');
                 if (mask) mask.remove();
                 fullscreenOverlay.style.background = '';
@@ -2336,15 +2728,8 @@
                 fsCalcContainer.style.display = 'none';
                 fsCalcContainer.classList.remove('active');
                 document.removeEventListener('keydown', calcKeyHandler);
-                // 恢复功能栏
-                if (funcPanelOpen) {
-                    funcPanel.style.opacity = '';
-                    startFuncCountdown();
-                }
-                // 如果计算器全屏关闭，回到功能栏
-                if (currentDetailFunc === 'calculator') {
-                    currentDetailFunc = null;
-                }
+                if (funcPanelOpen) { funcPanel.style.opacity = ''; startFuncCountdown(); }
+                if (currentDetailFunc === 'calculator') currentDetailFunc = null;
             }
 
             fsExitBtn.addEventListener('click', exitFullscreen);
@@ -2353,24 +2738,19 @@
                 if (e.touches.length === 1) {
                     let lastTap = fullscreenOverlay._lastTap || 0;
                     let now = Date.now();
-                    if (now - lastTap < 400) { exitFullscreen(); }
+                    if (now - lastTap < 400) exitFullscreen();
                     fullscreenOverlay._lastTap = now;
                 }
             });
 
-            // ================= 固定到主页 =================
+            /* ===== 固定到主页 ===== */
             function updateFixedWidgets() {
-                if (!prefs.pinWidgets) {
-                    fixedWidgets.innerHTML = '';
-                    return;
-                }
+                if (!prefs.pinWidgets) { fixedWidgets.innerHTML = ''; return; }
                 let html = '';
                 const cdRem = countdownTimer.getRemaining();
-                html +=
-                    `<div class="fixed-widget" id="fwCountdown" style="cursor:${prefs.dragWidgets?'grab':'default'};"><div class="fw-title">⏳ 倒计时</div><div class="fw-value countdown">${formatHHMMSS(cdRem>0?cdRem:0)}</div></div>`;
+                html += `<div class="fixed-widget" id="fwCountdown" style="cursor:${prefs.dragWidgets?'grab':'default'};"><div class="fw-title">⏳ 倒计时</div><div class="fw-value countdown">${formatHHMMSS(cdRem>0?cdRem:0)}</div></div>`;
                 const swMs = stopwatch.getMs();
-                html +=
-                    `<div class="fixed-widget" id="fwStopwatch" style="cursor:${prefs.dragWidgets?'grab':'default'};"><div class="fw-title">⏱️ 秒表</div><div class="fw-value stopwatch">${formatStopwatch(swMs)}</div></div>`;
+                html += `<div class="fixed-widget" id="fwStopwatch" style="cursor:${prefs.dragWidgets?'grab':'default'};"><div class="fw-title">⏱️ 秒表</div><div class="fw-value stopwatch">${formatStopwatch(swMs)}</div></div>`;
                 fixedWidgets.innerHTML = html;
 
                 if (prefs.dragWidgets && prefs.pinWidgets) {
@@ -2379,29 +2759,16 @@
                         el.addEventListener('mousedown', startDrag);
                         el.addEventListener('touchstart', startDragTouch, { passive: false });
                     });
-                } else {
-                    document.querySelectorAll('.fixed-widget').forEach(el => {
-                        el.style.cursor = 'default';
-                        el.removeEventListener('mousedown', startDrag);
-                        el.removeEventListener('touchstart', startDragTouch);
-                    });
                 }
             }
 
-            // ---- 拖拽 ----
             let dragData = null;
 
             function startDrag(e) {
                 if (!prefs.dragWidgets || !prefs.pinWidgets) return;
                 const el = e.currentTarget;
                 const rect = el.getBoundingClientRect();
-                dragData = {
-                    el: el,
-                    offsetX: e.clientX - rect.left,
-                    offsetY: e.clientY - rect.top,
-                    startX: rect.left,
-                    startY: rect.top
-                };
+                dragData = { el: el, offsetX: e.clientX - rect.left, offsetY: e.clientY - rect.top };
                 el.classList.add('dragging');
                 document.addEventListener('mousemove', onDragMove);
                 document.addEventListener('mouseup', endDrag);
@@ -2413,13 +2780,7 @@
                 const touch = e.touches[0];
                 const el = e.currentTarget;
                 const rect = el.getBoundingClientRect();
-                dragData = {
-                    el: el,
-                    offsetX: touch.clientX - rect.left,
-                    offsetY: touch.clientY - rect.top,
-                    startX: rect.left,
-                    startY: rect.top
-                };
+                dragData = { el: el, offsetX: touch.clientX - rect.left, offsetY: touch.clientY - rect.top };
                 el.classList.add('dragging');
                 document.addEventListener('touchmove', onDragMoveTouch, { passive: false });
                 document.addEventListener('touchend', endDragTouch);
@@ -2429,11 +2790,9 @@
             function onDragMove(e) {
                 if (!dragData) return;
                 const el = dragData.el;
-                const x = e.clientX - dragData.offsetX;
-                const y = e.clientY - dragData.offsetY;
                 el.style.position = 'fixed';
-                el.style.left = x + 'px';
-                el.style.top = y + 'px';
+                el.style.left = (e.clientX - dragData.offsetX) + 'px';
+                el.style.top = (e.clientY - dragData.offsetY) + 'px';
                 el.style.transform = 'none';
                 el.style.zIndex = '100';
             }
@@ -2442,35 +2801,27 @@
                 if (!dragData) return;
                 const touch = e.touches[0];
                 const el = dragData.el;
-                const x = touch.clientX - dragData.offsetX;
-                const y = touch.clientY - dragData.offsetY;
                 el.style.position = 'fixed';
-                el.style.left = x + 'px';
-                el.style.top = y + 'px';
+                el.style.left = (touch.clientX - dragData.offsetX) + 'px';
+                el.style.top = (touch.clientY - dragData.offsetY) + 'px';
                 el.style.transform = 'none';
                 el.style.zIndex = '100';
                 e.preventDefault();
             }
 
             function endDrag() {
-                if (dragData) {
-                    dragData.el.classList.remove('dragging');
-                    dragData = null;
-                }
+                if (dragData) { dragData.el.classList.remove('dragging'); dragData = null; }
                 document.removeEventListener('mousemove', onDragMove);
                 document.removeEventListener('mouseup', endDrag);
             }
 
             function endDragTouch() {
-                if (dragData) {
-                    dragData.el.classList.remove('dragging');
-                    dragData = null;
-                }
+                if (dragData) { dragData.el.classList.remove('dragging'); dragData = null; }
                 document.removeEventListener('touchmove', onDragMoveTouch);
                 document.removeEventListener('touchend', endDragTouch);
             }
 
-            // ================= 面板倒计时 =================
+            /* ===== 面板倒计时 ===== */
             class PanelCountdown {
                 constructor(displayEl, onExpire, duration) {
                     this.displayEl = displayEl;
@@ -2485,12 +2836,9 @@
                     this.stop();
                     this.remaining = this.duration;
                     this.updateDisplay();
-                    if (this.panelOpen) {
-                        this.timer = setInterval(() => this.tick(), 1000);
-                    }
+                    if (this.panelOpen) this.timer = setInterval(() => this.tick(), 1000);
                 }
-                stop() { if (this.timer) { clearInterval(this.timer);
-                        this.timer = null; } }
+                stop() { if (this.timer) { clearInterval(this.timer); this.timer = null; } }
                 tick() {
                     this.remaining--;
                     this.updateDisplay();
@@ -2506,12 +2854,11 @@
                 }
                 setPanelOpen(open) {
                     this.panelOpen = open;
-                    if (open) { this.reset(); } else { this.stop(); }
+                    if (open) this.reset(); else this.stop();
                 }
             }
 
-            let settingsCountdown = new PanelCountdown(document.getElementById('settingsCountdown'), () => closeSettings(),
-            8);
+            let settingsCountdown = new PanelCountdown(document.getElementById('settingsCountdown'), () => closeSettings(), 8);
             let taskCountdown = new PanelCountdown(document.getElementById('taskCountdown'), () => closeTaskPanel(), 15);
 
             settingsPanel.addEventListener('mousemove', () => settingsCountdown.reset());
@@ -2531,22 +2878,17 @@
             funcDetailOverlay.addEventListener('touchstart', resetNonRealTimer);
             funcDetailOverlay.addEventListener('scroll', resetNonRealTimer);
 
-            // ================= 手势：双指缩放 =================
+            /* ===== 手势：双指缩放 ===== */
             let lastPinchDist = 0;
-
             function getPinchDist(e) {
                 if (e.touches.length < 2) return 0;
                 const dx = e.touches[0].clientX - e.touches[1].clientX;
                 const dy = e.touches[0].clientY - e.touches[1].clientY;
                 return Math.sqrt(dx * dx + dy * dy);
             }
-
             document.addEventListener('touchstart', (e) => {
-                if (e.touches.length === 2) {
-                    lastPinchDist = getPinchDist(e);
-                }
+                if (e.touches.length === 2) lastPinchDist = getPinchDist(e);
             }, { passive: true });
-
             document.addEventListener('touchmove', (e) => {
                 if (e.touches.length === 2) {
                     const dist = getPinchDist(e);
@@ -2554,26 +2896,16 @@
                         const delta = dist - lastPinchDist;
                         if (Math.abs(delta) > 20) {
                             e.preventDefault();
-                            if (delta > 0) {
-                                if (!settingsPanel.classList.contains('open')) {
-                                    openSettingsWithAnimation();
-                                }
-                            } else {
-                                if (!taskPanel.classList.contains('open')) {
-                                    openTaskPanel();
-                                }
-                            }
+                            if (delta > 0) { if (!settingsPanel.classList.contains('open')) openSettingsWithAnimation(); }
+                            else { if (!taskPanel.classList.contains('open')) openTaskPanel(); }
                             lastPinchDist = dist;
                         }
                     }
                 }
             }, { passive: false });
+            document.addEventListener('touchend', (e) => { if (e.touches.length < 2) lastPinchDist = 0; }, { passive: true });
 
-            document.addEventListener('touchend', (e) => {
-                if (e.touches.length < 2) lastPinchDist = 0;
-            }, { passive: true });
-
-            // ================= 面板控制 =================
+            /* ===== 面板控制 ===== */
             let isAnimating = false;
 
             function openSettingsWithAnimation() {
@@ -2627,22 +2959,18 @@
                     const pauseFn = () => {
                         let playing = 0;
                         taskPanel.querySelectorAll('video').forEach(v2 => { if (!v2.paused) playing++; });
-                        if (playing === 0 && taskPanel.classList.contains('open')) {
-                            taskCountdown.start();
-                        }
+                        if (playing === 0 && taskPanel.classList.contains('open')) taskCountdown.start();
                     };
                     v.addEventListener('play', playFn);
                     v.addEventListener('pause', pauseFn);
                     v.addEventListener('ended', pauseFn);
-                    v._playFn = playFn;
-                    v._pauseFn = pauseFn;
                 });
             }
 
-            // ================= 任务面板 =================
+            /* ===== 任务面板 ===== */
             function revokeTaskBlobURL(task) {
                 if (task.dataURL && typeof task.dataURL === 'string' && task.dataURL.startsWith('blob:')) {
-                    URL.revokeObjectURL(task.dataURL);
+                    try { URL.revokeObjectURL(task.dataURL); } catch (e) {}
                 }
             }
 
@@ -2673,11 +3001,9 @@
                     if (task.type.startsWith('image/')) {
                         previewHtml = `<img src="${task.dataURL}" alt="preview">`;
                     } else if (task.type.startsWith('video/')) {
-                        previewHtml =
-                            `<video controls muted style="max-height:180px" src="${task.dataURL}"></video>`;
+                        previewHtml = `<video controls muted style="max-height:180px" src="${task.dataURL}"></video>`;
                     } else {
-                        previewHtml =
-                            `<pre>${escapeHtml(task.contentText.substring(0, 300))}${task.contentText.length>300?'…':''}</pre>`;
+                        previewHtml = `<pre>${escapeHtml(task.contentText.substring(0, 300))}${task.contentText.length>300?'…':''}</pre>`;
                     }
                     card.innerHTML = `
                         <div class="task-close" data-id="${task.id}"><i class="fas fa-times-circle"></i></div>
@@ -2687,7 +3013,7 @@
                     taskListDiv.appendChild(card);
                 });
                 document.querySelectorAll('.task-close').forEach(btn => {
-                    btn.addEventListener('click', (e) => { removeTaskById(btn.dataset.id); });
+                    btn.addEventListener('click', () => { removeTaskById(btn.dataset.id); });
                 });
                 observeTaskVideos();
                 let playing = 0;
@@ -2697,8 +3023,7 @@
             }
 
             function addTask(file, content, dataUrl, type) {
-                const newTask = { id: Date.now() + Math.random(), name: file.name, type: type, dataURL: dataUrl,
-                    contentText: content || '' };
+                const newTask = { id: Date.now() + Math.random(), name: file.name, type: type, dataURL: dataUrl, contentText: content || '' };
                 taskItems.unshift(newTask);
                 if (taskItems.length > 3) taskItems.pop();
                 renderTaskPanel();
@@ -2715,14 +3040,12 @@
                 } else if (type.startsWith('video/')) {
                     const url = URL.createObjectURL(file);
                     addTask(file, null, url, type);
-                } else if (type.startsWith('text/') || file.name.endsWith('.txt') || file.name.endsWith('.html') || file
-                    .name.endsWith('.js') || file.name.endsWith('.css')) {
+                } else if (type.startsWith('text/') || file.name.endsWith('.txt') || file.name.endsWith('.html') || file.name.endsWith('.js') || file.name.endsWith('.css')) {
                     const reader = new FileReader();
                     reader.onload = e => addTask(file, e.target.result, null, type);
                     reader.readAsText(file);
                 } else {
-                    addTask(file, `文件类型: ${type||'未知'}\n大小: ${(file.size/1024).toFixed(1)} KB`, null,
-                        'application/octet-stream');
+                    addTask(file, `文件类型: ${type||'未知'}\n大小: ${(file.size/1024).toFixed(1)} KB`, null, 'application/octet-stream');
                 }
             }
 
@@ -2734,7 +3057,7 @@
 
             clearAllTasksBtn.addEventListener('click', clearAllTasks);
 
-            // ================= 搜索历史 =================
+            /* ===== 搜索历史 ===== */
             function renderSearchHistory() {
                 if (!searchHistory.length) { historyPanel.classList.remove('show'); return; }
                 historyPanel.innerHTML = searchHistory.map((q, idx) => `
@@ -2746,8 +3069,7 @@
                 document.querySelectorAll('.history-item .history-text').forEach((item, idx) => {
                     const parent = item.closest('.history-item');
                     const query = searchHistory[parent?.dataset?.index];
-                    if (query) item.addEventListener('click', () => { searchInput.value = query;
-                        performSearch(); });
+                    if (query) item.addEventListener('click', () => { searchInput.value = query; performSearch(); });
                 });
                 document.querySelectorAll('.delete-history').forEach(btn => {
                     btn.addEventListener('click', (e) => {
@@ -2790,23 +3112,27 @@
                 window.open(url, '_blank');
             }
 
-            // ================= 地区天气 =================
+            /* ===== 地区天气 ===== */
             function populateCountries() {
                 countrySelect.innerHTML = '';
-                countries.forEach(c => { const opt = document.createElement('option');
+                countries.forEach(c => {
+                    const opt = document.createElement('option');
                     opt.value = c;
                     opt.textContent = c;
-                    countrySelect.appendChild(opt); });
+                    countrySelect.appendChild(opt);
+                });
             }
 
             function populateStates() {
                 const country = countrySelect.value;
                 const states = Object.keys(locationData[country] || {});
                 stateSelect.innerHTML = '';
-                states.forEach(s => { const opt = document.createElement('option');
+                states.forEach(s => {
+                    const opt = document.createElement('option');
                     opt.value = s;
                     opt.textContent = s;
-                    stateSelect.appendChild(opt); });
+                    stateSelect.appendChild(opt);
+                });
                 if (states.length) populateCities();
             }
 
@@ -2815,16 +3141,15 @@
                 const state = stateSelect.value;
                 const cities = (locationData[country] && locationData[country][state]) || [];
                 citySelect.innerHTML = '';
-                cities.forEach(c => { const opt = document.createElement('option');
+                cities.forEach(c => {
+                    const opt = document.createElement('option');
                     opt.value = c;
                     opt.textContent = c;
-                    citySelect.appendChild(opt); });
+                    citySelect.appendChild(opt);
+                });
             }
 
-            const weatherMap = { 'sunny': '晴朗', 'clear': '晴朗', 'fair': '晴朗', 'partly cloudy': '局部多云',
-                'cloudy': '多云', 'overcast': '阴天', 'rain': '雨', 'light rain': '小雨', 'heavy rain': '大雨',
-                'shower': '阵雨', 'snow': '雪', 'light snow': '小雪', 'thunderstorm': '雷雨', 'mist': '雾',
-                'fog': '雾', 'haze': '霾' };
+            const weatherMap = { 'sunny': '晴朗', 'clear': '晴朗', 'fair': '晴朗', 'partly cloudy': '局部多云', 'cloudy': '多云', 'overcast': '阴天', 'rain': '雨', 'light rain': '小雨', 'heavy rain': '大雨', 'shower': '阵雨', 'snow': '雪', 'light snow': '小雪', 'thunderstorm': '雷雨', 'mist': '雾', 'fog': '雾', 'haze': '霾' };
 
             function translateWeatherToChinese(engDesc) {
                 if (!engDesc) return '未知天气';
@@ -2864,44 +3189,64 @@
                 savePrefs();
             }
 
-            // ================= 偏好存储 =================
+            /* ===== 偏好存储 ===== */
             function savePrefs() {
-                let toStore = { ...prefs };
-                if (prefs.wallpaperType !== 'image') toStore.wallpaperData = null;
-                localStorage.setItem(STORAGE, JSON.stringify(toStore));
+                try {
+                    let toStore = { ...prefs };
+                    if (prefs.wallpaperType !== 'image') toStore.wallpaperData = null;
+                    localStorage.setItem(STORAGE, JSON.stringify(toStore));
+                } catch (e) { console.warn('保存偏好失败', e); }
             }
 
             function loadPrefs() {
-                const stored = localStorage.getItem(STORAGE);
-                if (stored) { try { Object.assign(prefs, JSON.parse(stored)); } catch (e) {} }
-                usernameInput.value = prefs.userName;
-                brightnessSlider.value = prefs.brightness;
-                setVolumeValue(prefs.volume, false);
-                applyBrightness(prefs.brightness);
-                if (prefs.locationCountry && countries.includes(prefs.locationCountry)) {
-                    countrySelect.value = prefs.locationCountry;
-                    populateStates();
-                    if (prefs.locationState && stateSelect.querySelector(`option[value="${prefs.locationState}"]`)) {
-                        stateSelect.value = prefs.locationState;
-                        populateCities();
-                        if (prefs.locationCity && citySelect.querySelector(`option[value="${prefs.locationCity}"]`))
-                            citySelect.value = prefs.locationCity;
+                try {
+                    const stored = localStorage.getItem(STORAGE);
+                    if (stored) {
+                        try { Object.assign(prefs, JSON.parse(stored)); } catch (e) {}
                     }
-                } else { populateStates(); }
-                updateLocationDisplay();
-                wallpaperSoundToggle.classList.toggle('active', prefs.wallpaperSoundEnabled);
-                if (prefs.wallpaperType === 'video') {
-                    restoreVideoWallpaper();
-                } else if (prefs.wallpaperType === 'image' && prefs.wallpaperData) {
-                    setWallpaperImageFromDataURL(prefs.wallpaperData);
-                } else {
-                    resetToDefaultWallpaper();
-                }
-                applyThemeFromPref();
-                renderSearchHistory();
-                updateDateTime();
-                updateFixedWidgets();
+                } catch (e) {}
+
+                try { usernameInput.value = prefs.userName; } catch (e) {}
+                try { brightnessSlider.value = prefs.brightness; } catch (e) {}
+                try { setVolumeValue(prefs.volume, false); } catch (e) {}
+                try { applyBrightness(prefs.brightness); } catch (e) {}
+
+                try {
+                    if (prefs.locationCountry && countries.includes(prefs.locationCountry)) {
+                        countrySelect.value = prefs.locationCountry;
+                        populateStates();
+                        if (prefs.locationState && stateSelect.querySelector(`option[value="${prefs.locationState}"]`)) {
+                            stateSelect.value = prefs.locationState;
+                            populateCities();
+                            if (prefs.locationCity && citySelect.querySelector(`option[value="${prefs.locationCity}"]`))
+                                citySelect.value = prefs.locationCity;
+                        }
+                    } else {
+                        populateStates();
+                    }
+                    updateLocationDisplay();
+                } catch (e) { console.warn('初始化位置失败', e); }
+
+                try { wallpaperSoundToggle.classList.toggle('active', prefs.wallpaperSoundEnabled); } catch (e) {}
+
+                try {
+                    if (prefs.wallpaperType === 'video') {
+                        restoreVideoWallpaper();
+                    } else if (prefs.wallpaperType === 'image' && prefs.wallpaperData) {
+                        setWallpaperImageFromDataURL(prefs.wallpaperData);
+                    } else {
+                        resetToDefaultWallpaper();
+                    }
+                } catch (e) { console.warn('初始化壁纸失败', e); }
+
+                try { applyThemeFromPref(); } catch (e) {}
+                try { renderSearchHistory(); } catch (e) {}
+                try { updateDateTime(); } catch (e) {}
+                try { updateFixedWidgets(); } catch (e) {}
+
                 if (prefs.准时提醒) showToast('准时提醒已开启');
+
+                try { setAIMode(!!prefs.aiMode); } catch (e) { console.warn('初始化AI模式失败', e); }
             }
 
             function applyThemeFromPref() {
@@ -2911,8 +3256,7 @@
                 if (mode === 'auto') isDark = (hour >= 18 || hour < 6);
                 else if (mode === 'dark') isDark = true;
                 document.body.classList.toggle('dark', isDark);
-                document.querySelectorAll('.theme-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.theme ===
-                    prefs.themeMode));
+                document.querySelectorAll('.theme-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.theme === prefs.themeMode));
             }
 
             function updateDateTime() {
@@ -2933,14 +3277,12 @@
                 else if (hour < 18) greet = '下午';
                 else if (hour < 20) greet = '傍晚';
                 else greet = '晚上';
-                const name = prefs.userName.trim() || 'USER';
+                const name = (prefs.userName || 'USER').trim() || 'USER';
                 greetingEl.innerHTML = `${greet}好，${name}`;
                 updateFixedWidgets();
             }
-            setInterval(updateDateTime, 1000);
-            setInterval(() => { if (prefs.themeMode === 'auto') applyThemeFromPref(); }, 60000);
 
-            // ================= 事件绑定 =================
+            /* ===== 事件绑定 ===== */
             searchConfirmBtn.addEventListener('click', performSearch);
             searchInput.addEventListener('focus', () => { if (searchHistory.length) historyPanel.classList.add('show'); });
             searchInput.addEventListener('blur', () => setTimeout(() => historyPanel.classList.remove('show'), 200));
@@ -2948,34 +3290,32 @@
 
             settingsTrigger.addEventListener('click', () => openSettingsWithAnimation());
             closeSettingsBtn.addEventListener('click', closeSettings);
+
             document.addEventListener('click', (e) => {
-                if (!settingsPanel.contains(e.target) && !settingsTrigger.contains(e.target) && settingsPanel
-                    .classList.contains('open')) closeSettings();
-                if (!taskPanel.contains(e.target) && e.target !== openTaskViewBtn && e.target.closest(
-                        '#openTaskViewBtn') === null && taskPanel.classList.contains('open')) closeTaskPanel();
-                if (!funcPanel.contains(e.target) && e.target !== openFuncPanelBtn && !funcPanel.classList
-                    .contains('open') && funcPanelOpen) closeFuncPanel();
+                try {
+                    if (!settingsPanel.contains(e.target) && !settingsTrigger.contains(e.target) && settingsPanel.classList.contains('open')) closeSettings();
+                    if (!taskPanel.contains(e.target) && e.target !== openTaskViewBtn && e.target.closest('#openTaskViewBtn') === null && taskPanel.classList.contains('open')) closeTaskPanel();
+                    if (!funcPanel.contains(e.target) && e.target !== openFuncPanelBtn && funcPanelOpen && !funcPanel.classList.contains('open')) closeFuncPanel();
+                } catch (err) {}
             });
 
             openTaskViewBtn.addEventListener('click', () => openTaskPanel());
             closeTaskPanelBtn.addEventListener('click', closeTaskPanel);
 
             document.querySelectorAll('.theme-btn').forEach(btn => {
-                btn.addEventListener('click', () => { prefs.themeMode = btn.dataset.theme;
+                btn.addEventListener('click', () => {
+                    prefs.themeMode = btn.dataset.theme;
                     applyThemeFromPref();
-                    savePrefs(); });
+                    savePrefs();
+                });
             });
-            usernameInput.addEventListener('change', () => { prefs.userName = usernameInput.value;
-                savePrefs();
-                updateDateTime(); });
-            brightnessSlider.addEventListener('input', e => { prefs.brightness = e.target.value;
-                applyBrightness(prefs.brightness);
-                savePrefs(); });
+
+            usernameInput.addEventListener('change', () => { prefs.userName = usernameInput.value; savePrefs(); updateDateTime(); });
+            brightnessSlider.addEventListener('input', e => { prefs.brightness = e.target.value; applyBrightness(prefs.brightness); savePrefs(); });
             volumeSlider.addEventListener('input', e => setVolumeValue(e.target.value, true));
             applyLocationBtn.addEventListener('click', updateLocationDisplay);
             resetWallpaperBtn.addEventListener('click', resetToDefaultWallpaper);
-            wallpaperUpload.addEventListener('change', e => { if (e.target.files && e.target.files[0]) handleWallpaperFile(
-                    e.target.files[0]); });
+            wallpaperUpload.addEventListener('change', e => { if (e.target.files && e.target.files[0]) handleWallpaperFile(e.target.files[0]); });
             globalFileImport.addEventListener('change', e => { if (e.target.files) handleMultipleFiles(e.target.files); });
 
             openFuncPanelBtn.addEventListener('click', openFuncPanel);
@@ -2983,27 +3323,28 @@
 
             funcGrid.addEventListener('click', (e) => {
                 const card = e.target.closest('.func-card');
-                if (card) {
-                    const func = card.dataset.func;
-                    openDetail(func);
-                }
+                if (card) openDetail(card.dataset.func);
             });
 
             backFromDetail.addEventListener('click', closeDetail);
 
-            // ================= 键盘 =================
+            /* AI 开关 */
+            aiModeToggle.addEventListener('click', function() {
+                setAIMode(!prefs.aiMode);
+                showToast(prefs.aiMode ? 'AI调度已开启' : 'AI调度已关闭');
+            });
+            chatSendBtn.addEventListener('click', handleChatSend);
+            chatInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleChatSend(); });
+
+            /* ===== 键盘 ===== */
             function isInputFocused() {
                 const active = document.activeElement;
-                return active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active
-                .isContentEditable);
+                return active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.isContentEditable);
             }
 
             document.addEventListener('keydown', (e) => {
                 if (isInputFocused()) return;
-                // 全局 Delete 键处理（当全屏计算器打开时，由 calcKeyHandler 处理，这里不重复）
                 if (e.key === 'Delete') {
-                    // 如果全屏计算器打开，calcKeyHandler会处理并阻止冒泡
-                    // 否则，关闭所有面板
                     if (!fullscreenOverlay.classList.contains('active')) {
                         e.preventDefault();
                         if (settingsPanel.classList.contains('open')) closeSettings();
@@ -3029,7 +3370,6 @@
                         openTaskPanel();
                         break;
                     case 'Backspace':
-                        // 只有未聚焦输入框时，且非全屏计算器，才关闭面板
                         if (!fullscreenOverlay.classList.contains('active')) {
                             e.preventDefault();
                             if (settingsPanel.classList.contains('open')) closeSettings();
@@ -3043,33 +3383,32 @@
 
             document.addEventListener('mousedown', (e) => {
                 if (isInputFocused()) return;
-                if (e.button === 1) { e.preventDefault();
-                    openTaskPanel(); }
+                if (e.button === 1) { e.preventDefault(); openTaskPanel(); }
             });
-            document.addEventListener('contextmenu', (e) => { e.preventDefault();
-                openSettingsWithAnimation(); });
+            document.addEventListener('contextmenu', (e) => { e.preventDefault(); openSettingsWithAnimation(); });
 
-            // ================= 启动 =================
-            const overlay = document.getElementById('startupOverlay');
-            if (overlay) { overlay.style.opacity = '0';
-                setTimeout(() => overlay.remove(), 200); }
+            /* ===== 启动初始化 ===== */
+            try { populateCountries(); } catch (e) { console.warn('populateCountries 失败', e); }
+            try { loadPrefs(); } catch (e) { console.warn('loadPrefs 失败', e); }
+            try { applyVolumeToMedia(prefs.volume); } catch (e) {}
+            try { renderTaskPanel(); } catch (e) {}
+            try { updateFixedWidgets(); } catch (e) {}
+            try { setTimeout(checkHourlyAlarm, 1000); } catch (e) {}
 
-            populateCountries();
-            loadPrefs();
-            applyVolumeToMedia(prefs.volume);
-            renderTaskPanel();
-            updateFixedWidgets();
-            setTimeout(checkHourlyAlarm, 1000);
+            try { setInterval(updateDateTime, 1000); } catch (e) {}
+            try { setInterval(() => { if (prefs.themeMode === 'auto') applyThemeFromPref(); }, 60000); } catch (e) {}
 
             window.addEventListener('beforeunload', () => {
-                taskItems.forEach(task => revokeTaskBlobURL(task));
-                if (bgVideo.src && bgVideo.src.startsWith('blob:')) URL.revokeObjectURL(bgVideo.src);
+                try { taskItems.forEach(task => revokeTaskBlobURL(task)); } catch (e) {}
+                try { if (bgVideo.src && bgVideo.src.startsWith('blob:')) URL.revokeObjectURL(bgVideo.src); } catch (e) {}
                 revokeCurrentVideoUrl();
-                if (fsInterval) clearInterval(fsInterval);
-                document.removeEventListener('keydown', calcKeyHandler);
+                try { if (fsInterval) clearInterval(fsInterval); } catch (e) {}
+                try { document.removeEventListener('keydown', calcKeyHandler); } catch (e) {}
             });
 
             console.log('CUI4 功能栏版 启动完成');
+
+            setTimeout(dismissStartupOverlay, 500);
         })();
     </script>
 </body>
