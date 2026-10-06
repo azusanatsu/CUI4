@@ -1966,8 +1966,6 @@
 
         /* ============================================================
          * 新增：息屏时间显示
-         * 与闹钟息屏相同的位置逻辑（固定层，z-index 同 8000），
-         * 只显示当前时间，字号比闹钟倒计时更大。
          * ============================================================ */
         .time-screensaver {
             position: fixed;
@@ -2012,7 +2010,6 @@
             .as-side { font-size: 0.95rem; letter-spacing: 3px; }
             .as-actions { padding: 0 20px 40px; gap: 12px; }
             .as-btn { padding: 12px 20px; font-size: 0.9rem; }
-            /* 新增：息屏时间显示移动端字号 */
             .ts-time { font-size: clamp(3rem, 22vw, 8rem); letter-spacing: 6px; }
         }
     </style>
@@ -2246,12 +2243,10 @@
                     <div class="setting-info"><span class="setting-label">CUI4内置闹钟</span><div class="setting-desc">公开测试版 · 最多24个闹钟（↓ 方向键快捷开启/关闭）</div></div>
                     <div class="setting-control"><button id="openAlarmPanelBtn" class="file-label" style="background:var(--tabs-active);"><i class="fas fa-clock"></i> 打开闹钟</button></div>
                 </div>
-                <!-- ===== 新增：息屏时间显示开关 ===== -->
                 <div class="setting-row">
                     <div class="setting-info"><span class="setting-label">息屏时间显示</span><div class="setting-desc">10秒无操作后循环息屏显示当前时间（与闹钟可轮播，时间优先）</div></div>
                     <div class="setting-control"><div id="screenSaverTimeToggle" class="toggle-switch"></div></div>
                 </div>
-                <!-- ===== 新增结束 ===== -->
             </div>
         </div>
     </div>
@@ -2318,20 +2313,24 @@
         </div>
     </div>
 
-    <!-- ===== 新增：息屏时间显示 ===== -->
+    <!-- 息屏时间显示 -->
     <div class="time-screensaver" id="timeScreensaver">
         <div class="ts-time" id="tsTime">--:--:--</div>
     </div>
-    <!-- ===== 新增结束 ===== -->
 
     <script>
         /* ================================================================
-         * CUI4 主脚本 — 第11次修改
-         * 修改内容：
-         *   1. 「息屏时间显示」默认打开（DEFAULT_PREFS.screenSaverTimeEnabled = true）
-         *   2. 初始化会将「息屏时间显示」恢复为打开
-         *   3. 点击「初始化」后，自动继续执行一次「重启」序列
-         * 其余逻辑（三模式轮播、闹钟优先级等）保持第10次修改不变。
+         * CUI4 主脚本 — 第12次修改
+         * 本次新增：
+         *   1. 触摸手势：上滑=功能栏，下滑=闹钟，左→右滑=任务视图（保留双指捏合）
+         *   2. 鼠标中键 = 初始化（不再打开任务视图）
+         *   3. 键盘："-"小 / "="默认 / "+"大
+         *   4. 数字键 1~9 绑定九宫格位置
+         *   5. "*" = 重启
+         *   6. 网站层拦截 Ctrl+"+"/"-" 步进调整内容比例
+         *   7. CapsLock / LShift = 任务视图，RShift = 设置（不截取 Shift）
+         *   8. Space = 关闭所有已打开面板（无面板时无效）
+         *   9. 输入模式下禁用全部快捷键与手势
          * ================================================================ */
         (function() {
             'use strict';
@@ -2689,7 +2688,6 @@
                 aiMode: false,
                 contentPosition: 'center',
                 contentSize: 'default',
-                /* ===== 修改：息屏时间显示默认打开 ===== */
                 screenSaverTimeEnabled: true
             };
 
@@ -2788,11 +2786,10 @@
             const asEndBtn = document.getElementById('asEndBtn');
             const asSnoozeBtn = document.getElementById('asSnoozeBtn');
 
-            /* ===== 新增：息屏时间显示 DOM ===== */
+            /* 息屏时间显示 DOM */
             const timeScreensaver = document.getElementById('timeScreensaver');
             const tsTime = document.getElementById('tsTime');
             const screenSaverTimeToggle = document.getElementById('screenSaverTimeToggle');
-            /* ===== 新增结束 ===== */
 
             class CountdownTimer {
                 constructor() {
@@ -3164,6 +3161,23 @@
                 applyContentSize(size);
                 updateSizeUI();
                 savePrefs();
+            }
+
+            /* 步进调整内容比例（Ctrl + "+" / "-"） */
+            const SIZE_ORDER = ['small', 'default', 'large'];
+            const SIZE_LABEL = { small: '小', default: '默认', large: '大' };
+            function stepContentSize(dir) {
+                let idx = SIZE_ORDER.indexOf(prefs.contentSize || 'default');
+                if (idx === -1) idx = 1;
+                let next = idx + dir;
+                if (next < 0) next = 0;
+                if (next > 2) next = 2;
+                if (next === idx) {
+                    showToast('内容比例已是' + SIZE_LABEL[SIZE_ORDER[idx]] + '，无法继续' + (dir > 0 ? '增大' : '减小'));
+                    return;
+                }
+                setContentSize(SIZE_ORDER[next]);
+                showToast('内容比例：' + SIZE_LABEL[SIZE_ORDER[next]]);
             }
 
             function setAIMode(enabled) {
@@ -4058,6 +4072,7 @@
             }, { passive: true });
             document.addEventListener('touchmove', (e) => {
                 if (e.touches.length === 2) {
+                    if (isInputFocused()) return;
                     const dist = getPinchDist(e);
                     if (lastPinchDist > 0) {
                         const delta = dist - lastPinchDist;
@@ -4071,6 +4086,62 @@
                 }
             }, { passive: false });
             document.addEventListener('touchend', (e) => { if (e.touches.length < 2) lastPinchDist = 0; }, { passive: true });
+
+            /* ============================================================
+             * 新增：单指滑动手势
+             *   上滑 → 功能栏
+             *   下滑 → 闹钟面板
+             *   左→右滑 → 任务视图
+             *   （双指捏合逻辑保留在上方）
+             * ============================================================ */
+            (function initSwipeGestures() {
+                let startX = 0, startY = 0, startTime = 0, tracking = false;
+
+                function inScrollable(el) {
+                    if (!el || !el.closest) return false;
+                    return !!el.closest('.chat-messages, .settings-scroll, .task-list, .alarm-list, .func-view, .history-panel, .alarm-editor, .initial-confirm-panel');
+                }
+
+                document.addEventListener('touchstart', function(e) {
+                    if (e.touches.length !== 1) { tracking = false; return; }
+                    if (isInputFocused()) { tracking = false; return; }
+                    if (ringingState) { tracking = false; return; }
+                    if (inScrollable(e.target)) { tracking = false; return; }
+                    tracking = true;
+                    startX = e.touches[0].clientX;
+                    startY = e.touches[0].clientY;
+                    startTime = Date.now();
+                }, { passive: true });
+
+                document.addEventListener('touchend', function(e) {
+                    if (!tracking) return;
+                    tracking = false;
+                    if (e.changedTouches.length !== 1) return;
+                    if (isInputFocused()) return;
+                    if (ringingState) return;
+
+                    const t = e.changedTouches[0];
+                    const dx = t.clientX - startX;
+                    const dy = t.clientY - startY;
+                    const dt = Date.now() - startTime;
+                    if (dt > 800) return;
+
+                    const absX = Math.abs(dx);
+                    const absY = Math.abs(dy);
+                    const TH = 60;
+
+                    if (absX < TH && absY < TH) return;
+
+                    if (absX > absY) {
+                        /* 水平滑动：从左向右 → 任务视图 */
+                        if (dx > 0) { openTaskPanel(); }
+                    } else {
+                        /* 垂直滑动：上 → 功能栏；下 → 闹钟 */
+                        if (dy < 0) { openFuncPanel(); }
+                        else { openAlarmPanel(); }
+                    }
+                }, { passive: true });
+            })();
 
             let isAnimating = false;
 
@@ -4119,6 +4190,21 @@
                 taskPanel.classList.remove('open');
                 taskCountdown.setPanelOpen(false);
                 taskCountdown.start();
+            }
+
+            /* ============================================================
+             * 关闭所有面板（Space 使用）
+             * 覆盖：任务视图 / 设置 / 闹钟 / 初始化 / 功能栏
+             * ============================================================ */
+            function closeAllPanels() {
+                cancelShiftAction();
+                let any = false;
+                if (settingsPanel.classList.contains('open')) { closeSettings(); any = true; }
+                if (taskPanel.classList.contains('open')) { closeTaskPanel(); any = true; }
+                if (alarmPanelOpen) { closeAlarmPanel(); any = true; }
+                if (initialConfirmPanel.classList.contains('show')) { hideInitialConfirmPanel(); any = true; }
+                if (funcPanelOpen) { closeFuncPanel(); any = true; }
+                return any;
             }
 
             function observeTaskVideos() {
@@ -4410,7 +4496,6 @@
 
                 try { wallpaperSoundToggle.classList.toggle('active', prefs.wallpaperSoundEnabled); } catch (e) {}
 
-                /* ===== 恢复息屏时间显示开关状态 ===== */
                 try {
                     if (screenSaverTimeToggle) {
                         screenSaverTimeToggle.classList.toggle('active', !!prefs.screenSaverTimeEnabled);
@@ -4648,15 +4733,12 @@
                 updateSizeUI();
                 prefs.准时提醒 = true;
 
-                /* ===== 修改：初始化时把「息屏时间显示」恢复为打开 ===== */
                 prefs.screenSaverTimeEnabled = true;
                 if (screenSaverTimeToggle) screenSaverTimeToggle.classList.add('active');
-                /* ===== 修改结束 ===== */
 
                 updateDateTime();
                 savePrefs();
 
-                /* ===== 修改：初始化完成后继续执行一次「重启」序列 ===== */
                 setTimeout(() => {
                     hideInitialConfirmPanel();
                     setTimeout(() => {
@@ -4664,7 +4746,6 @@
                         restartSequence();
                     }, 700);
                 }, 800);
-                /* ===== 修改结束 ===== */
             }
 
             /* ============================================================
@@ -4678,16 +4759,14 @@
             let screensaverRinging = false;
             let screensaverTimer = null;
             let screensaverCountdownTimer = null;
-            /* 循环模式：一旦首次触发，之后每 3 秒循环一次息屏 */
             let screensaverCycleActive = false;
             let nextCycleAt = 0;
             let lastTriggeredMinuteMap = new Map();
 
-            /* 息屏时间显示 / 轮播状态 */
-            let screensaverKind = null;        // null | 'time' | 'alarm'
-            let timeScreensaverTimer = null;    // 3 秒显示计时
-            let timeScreensaverUpdateTimer = null; // 当前时间刷新计时
-            let screensaverCyclePhase = null;   // 'time' | 'alarm' —— 下一帧该显示谁
+            let screensaverKind = null;
+            let timeScreensaverTimer = null;
+            let timeScreensaverUpdateTimer = null;
+            let screensaverCyclePhase = null;
 
             function loadAlarms() {
                 try {
@@ -5062,7 +5141,6 @@
             async function triggerAlarm(alarm) {
                 if (ringingState) return;
 
-                /* 闹钟响铃时，如果正在显示时间息屏，先隐藏 */
                 if (screensaverActive && screensaverKind === 'time') {
                     hideTimeScreensaver(false);
                 }
@@ -5213,9 +5291,7 @@
                 asSnoozeBtn.innerText = repeatMin > 0 ? (repeatMin + '分钟后提醒我') : '结束提醒';
             }
 
-            /* 显示息屏闹钟 */
             function showAlarmScreensaver(isRinging, alarm) {
-                /* 若正在显示时间息屏，先隐藏它 */
                 if (screensaverActive && screensaverKind === 'time') {
                     hideTimeScreensaver(false);
                 }
@@ -5239,14 +5315,10 @@
 
                 if (!isRinging) {
                     if (screensaverTimer) clearTimeout(screensaverTimer);
-                    /* 3 秒后自动隐藏，标记 fromAuto=true 以便调度下一次循环 */
                     screensaverTimer = setTimeout(() => { hideAlarmScreensaver(true); }, 3000);
                 }
             }
 
-            /* 隐藏息屏闹钟
-             * fromAuto = true 表示由超时自动隐藏（用于调度下一次循环显示）
-             * fromAuto = false 表示由用户操作/按钮触发（不调度循环） */
             function hideAlarmScreensaver(fromAuto) {
                 if (!screensaverActive || screensaverKind !== 'alarm') return;
                 screensaverActive = false;
@@ -5261,9 +5333,6 @@
                 }
             }
 
-            /* ============================================================
-             * 息屏时间显示 —— 显示/隐藏/刷新
-             * ============================================================ */
             function updateTimeScreensaverContent() {
                 if (!tsTime) return;
                 const now = new Date();
@@ -5287,7 +5356,6 @@
                 timeScreensaverUpdateTimer = setInterval(updateTimeScreensaverContent, 500);
 
                 if (timeScreensaverTimer) clearTimeout(timeScreensaverTimer);
-                /* 3 秒后自动隐藏，标记 fromAuto=true 以便调度下一次循环 */
                 timeScreensaverTimer = setTimeout(() => { hideTimeScreensaver(true); }, 3000);
             }
 
@@ -5303,12 +5371,6 @@
                 }
             }
 
-            /* ============================================================
-             * 轮播调度器
-             * - 两种都开：时间 → 闹钟 → 时间 → 闹钟 ……
-             * - 只开时间：时间 → 时间 → ……
-             * - 只开闹钟：闹钟 → 闹钟 → ……
-             * ============================================================ */
             function displayNextScreensaver() {
                 const timeEnabled = !!prefs.screenSaverTimeEnabled;
                 const alarmEnabled = alarms.some(a => a.enabled && a.saved);
@@ -5319,7 +5381,6 @@
                 } else if (screensaverCyclePhase === 'alarm' && alarmEnabled) {
                     showTime = false;
                 } else if (timeEnabled) {
-                    /* 阶段失效，但时间还开着 → 时间优先 */
                     showTime = true;
                 } else if (alarmEnabled) {
                     showTime = false;
@@ -5329,16 +5390,13 @@
 
                 if (showTime) {
                     showTimeScreensaver();
-                    /* 两种都开 → 下一帧闹钟；只开时间 → 保持时间 */
                     screensaverCyclePhase = alarmEnabled ? 'alarm' : 'time';
                 } else {
                     showAlarmScreensaver(false);
-                    /* 两种都开 → 下一帧时间；只开闹钟 → 保持闹钟 */
                     screensaverCyclePhase = timeEnabled ? 'time' : 'alarm';
                 }
             }
 
-            /* 全局活动检测 */
             function markActivity() {
                 lastActivity = Date.now();
                 if (screensaverActive && !screensaverRinging) {
@@ -5354,10 +5412,6 @@
             ['mousemove', 'mousedown', 'touchstart', 'keydown', 'wheel', 'touchmove']
                 .forEach(ev => document.addEventListener(ev, markActivity, { passive: true, capture: true }));
 
-            /* 空闲触发主循环
-             * - 未进入循环时：10 秒无操作触发第一次
-             * - 进入循环后：每 3 秒间隔（息 3 秒显示 + 3 秒隐藏 + 再显示）
-             * - 首个显示的息屏：若时间开启则为时间，否则为闹钟 */
             setInterval(() => {
                 if (screensaverActive) return;
                 if (ringingState) return;
@@ -5369,7 +5423,6 @@
                 }
                 const now = Date.now();
                 if (screensaverCycleActive) {
-                    // 若用户最近 3 秒内操作过，则退出循环
                     if (now - lastActivity < 3000) {
                         screensaverCycleActive = false;
                         nextCycleAt = 0;
@@ -5383,14 +5436,12 @@
                 } else {
                     if (now - lastActivity >= 10000) {
                         screensaverCycleActive = true;
-                        /* 首次触发：优先时间息屏（若开启），否则闹钟 */
                         screensaverCyclePhase = prefs.screenSaverTimeEnabled ? 'time' : 'alarm';
                         displayNextScreensaver();
                     }
                 }
             }, 500);
 
-            /* 响铃键盘处理（capture 阶段优先） */
             document.addEventListener('keydown', (e) => {
                 if (!ringingState) return;
                 if (e.key === 'Enter') {
@@ -5442,7 +5493,6 @@
                 createAlarm();
             });
 
-            /* 息屏时间显示开关 */
             if (screenSaverTimeToggle) {
                 screenSaverTimeToggle.addEventListener('click', function() {
                     prefs.screenSaverTimeEnabled = !prefs.screenSaverTimeEnabled;
@@ -5452,24 +5502,169 @@
                 });
             }
 
-            document.addEventListener('keydown', (e) => {
-                if (isInputFocused()) return;
-                if (fullscreenOverlay.classList.contains('active')) {
-                    if (e.key === 'Escape' && fsMode !== 'calculator') { e.preventDefault(); exitFullscreen(); }
+            /* ============================================================
+             * 输入模式检测
+             * ============================================================ */
+            function isInputFocused() {
+                const active = document.activeElement;
+                if (!active) return false;
+                const tag = active.tagName;
+                return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || active.isContentEditable;
+            }
+
+            /* ============================================================
+             * Shift 待触发动作（避免与 Shift 组合键冲突）
+             * ============================================================ */
+            let shiftPending = null;
+            let shiftOpenTimer = null;
+
+            function cancelShiftAction() {
+                if (shiftOpenTimer) { clearTimeout(shiftOpenTimer); shiftOpenTimer = null; }
+                shiftPending = null;
+            }
+
+            /* ============================================================
+             * 数字键 → 九宫格位置
+             * ============================================================ */
+            const POS_KEY_MAP = {
+                '1': 'topleft', '2': 'top', '3': 'topright',
+                '4': 'left', '5': 'center', '6': 'right',
+                '7': 'bottomleft', '8': 'bottom', '9': 'bottomright'
+            };
+
+            /* ============================================================
+             * 全局键盘快捷键
+             * ============================================================ */
+            document.addEventListener('keydown', function(e) {
+                /* --- 输入模式下禁用全部快捷键 --- */
+                if (isInputFocused()) {
+                    cancelShiftAction();
                     return;
                 }
+
+                const isShiftKey = (e.key === 'Shift' || e.code === 'ShiftLeft' || e.code === 'ShiftRight');
+                if (!isShiftKey) cancelShiftAction();
+
+                /* --- Space：关闭所有已打开的面板 --- */
+                if (e.code === 'Space' || e.key === ' ' || e.key === 'Spacebar') {
+                    if (closeAllPanels()) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                    }
+                    return;
+                }
+
+                /* --- 网站层拦截 Ctrl + "+" / Ctrl + "-" --- */
+                if (e.ctrlKey || e.metaKey) {
+                    const code = e.code || '';
+                    const key = e.key;
+                    if (code === 'Equal' || code === 'NumpadAdd' || key === '=' || key === '+') {
+                        e.preventDefault();
+                        stepContentSize(1);
+                        return;
+                    }
+                    if (code === 'Minus' || code === 'NumpadSubtract' || key === '-' || key === '_') {
+                        e.preventDefault();
+                        stepContentSize(-1);
+                        return;
+                    }
+                    return;
+                }
+
+                /* --- 全屏覆盖层内只处理 Esc --- */
+                if (fullscreenOverlay.classList.contains('active')) {
+                    if (e.key === 'Escape' && fsMode !== 'calculator') {
+                        e.preventDefault();
+                        exitFullscreen();
+                    }
+                    return;
+                }
+
+                /* --- Delete：切换窗口全屏 --- */
                 if (e.key === 'Delete') {
                     e.preventDefault();
                     if (isFullscreenNow()) exitSiteFullscreen();
                     else requestSiteFullscreen();
                     return;
                 }
-                if (e.key === 'Tab' && !e.ctrlKey && !e.metaKey) {
+
+                /* --- Tab：任务视图 --- */
+                if (e.key === 'Tab' && !e.ctrlKey && !e.metaKey && !e.altKey) {
                     e.preventDefault();
                     if (taskPanel.classList.contains('open')) closeTaskPanel();
                     else openTaskPanel();
                     return;
                 }
+
+                /* --- "-" 小 / "=" 默认 / "+" 大 --- */
+                if (e.key === '-' || e.code === 'NumpadSubtract') {
+                    e.preventDefault();
+                    setContentSize('small');
+                    showToast('内容比例：小');
+                    return;
+                }
+                if (e.key === '=' || e.code === 'NumpadEqual') {
+                    e.preventDefault();
+                    setContentSize('default');
+                    showToast('内容比例：默认');
+                    return;
+                }
+                if (e.key === '+' || e.code === 'NumpadAdd') {
+                    e.preventDefault();
+                    setContentSize('large');
+                    showToast('内容比例：大');
+                    return;
+                }
+
+                /* --- 数字键 1~9：九宫格位置 --- */
+                if (Object.prototype.hasOwnProperty.call(POS_KEY_MAP, e.key)) {
+                    e.preventDefault();
+                    setContentPosition(POS_KEY_MAP[e.key]);
+                    showToast('内容位置已调整');
+                    return;
+                }
+
+                /* --- "*"：重启 --- */
+                if (e.key === '*' || e.code === 'NumpadMultiply') {
+                    e.preventDefault();
+                    showToast('正在重新启动…');
+                    restartSequence();
+                    return;
+                }
+
+                /* --- CapsLock：任务视图 --- */
+                if (e.code === 'CapsLock' || e.key === 'CapsLock') {
+                    e.preventDefault();
+                    if (taskPanel.classList.contains('open')) closeTaskPanel();
+                    else openTaskPanel();
+                    return;
+                }
+
+                /* --- LShift：任务视图 / RShift：设置（不截取 Shift） --- */
+                if (e.code === 'ShiftLeft') {
+                    if (!shiftPending) {
+                        shiftPending = 'L';
+                        shiftOpenTimer = setTimeout(function() {
+                            shiftOpenTimer = null;
+                            shiftPending = null;
+                            openTaskPanel();
+                        }, 220);
+                    }
+                    return;
+                }
+                if (e.code === 'ShiftRight') {
+                    if (!shiftPending) {
+                        shiftPending = 'R';
+                        shiftOpenTimer = setTimeout(function() {
+                            shiftOpenTimer = null;
+                            shiftPending = null;
+                            openSettingsWithAnimation();
+                        }, 220);
+                    }
+                    return;
+                }
+
+                /* --- 方向键 --- */
                 switch (e.key) {
                     case 'ArrowLeft':
                         e.preventDefault();
@@ -5491,14 +5686,16 @@
                         break;
                     case 'Backspace':
                         e.preventDefault();
-                        if (settingsPanel.classList.contains('open')) closeSettings();
-                        if (taskPanel.classList.contains('open')) closeTaskPanel();
-                        if (funcPanelOpen) closeFuncPanel();
-                        if (initialConfirmPanel.classList.contains('show')) hideInitialConfirmPanel();
-                        if (alarmPanelOpen) closeAlarmPanel();
+                        closeAllPanels();
                         break;
                 }
             });
+
+            /* --- 浏览器缩放（Ctrl + 滚轮）也拦截 --- */
+            document.addEventListener('wheel', function(e) {
+                if (isInputFocused()) return;
+                if (e.ctrlKey) e.preventDefault();
+            }, { passive: false });
 
             /* 事件绑定（原有） */
             searchConfirmBtn.addEventListener('click', performSearch);
@@ -5626,18 +5823,22 @@
             deepThinkBtn.addEventListener('click', function() { this.classList.toggle('active'); });
             webSearchBtn.addEventListener('click', function() { this.classList.toggle('active'); });
 
-            function isInputFocused() {
-                const active = document.activeElement;
-                return active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.isContentEditable);
-            }
-
+            /* 鼠标中键 → 初始化（不再打开任务视图） */
             document.addEventListener('mousedown', (e) => {
                 if (isInputFocused()) return;
                 if (fullscreenOverlay.classList.contains('active')) return;
-                if (e.button === 1) { e.preventDefault(); openTaskPanel(); }
+                if (e.button === 1) {
+                    e.preventDefault();
+                    showInitialConfirmPanel();
+                }
             });
+            document.addEventListener('auxclick', (e) => {
+                if (e.button === 1) e.preventDefault();
+            });
+
             document.addEventListener('contextmenu', (e) => {
                 e.preventDefault();
+                if (isInputFocused()) return;
                 if (fullscreenOverlay.classList.contains('active')) return;
                 openSettingsWithAnimation();
             });
@@ -5668,15 +5869,17 @@
                 try { if (fsInterval) clearInterval(fsInterval); } catch (e) {}
                 try { document.removeEventListener('keydown', calcKeyHandler); } catch (e) {}
                 try { if (ringingState) stopRinging(); } catch (e) {}
+                try { cancelShiftAction(); } catch (e) {}
             });
 
             try { window.CUI4Storage = AppStorage; } catch (e) {}
 
-            console.log('CUI4 第11次修改 启动完成 | 存储模式: ' + AppStorage.getMode() +
+            console.log('CUI4 第12次修改 启动完成 | 存储模式: ' + AppStorage.getMode() +
                 (AppStorage.getDir() ? ' | 目录: ' + AppStorage.getDir() : '') +
                 ' | 闹钟数量: ' + alarms.length +
                 ' | 息屏时间显示: ' + (prefs.screenSaverTimeEnabled ? 'ON' : 'OFF') +
-                ' | 息屏循环间隔: 3s | 初始化后自动重启: ON');
+                ' | 手势: 上滑功能栏/下滑闹钟/左→右任务视图' +
+                ' | 中键: 初始化 | 快捷键: -/=/+ 比例, 1~9 位置, * 重启, CapsLock/LShift 任务, RShift 设置, Space 关闭面板');
         })();
     </script>
 </body>
