@@ -2277,7 +2277,11 @@
 
     <script>
         /* ================================================================
-         * CUI4 主脚本 — 第8次修改（新增闹钟模块）
+         * CUI4 主脚本 — 第9次修改
+         * 修改：息屏闹钟循环间隔改为 3 秒
+         *   - 首次触发仍是「10 秒无操作」
+         *   - 息屏显示 3 秒 → 隐藏 → 回到主内容 3 秒 → 再次息屏 → 循环
+         *   - 用户任何操作（触摸/光标/键入）立即退出循环，重新按 10 秒规则等待
          * ================================================================ */
         (function() {
             'use strict';
@@ -4599,6 +4603,9 @@
             let screensaverRinging = false;
             let screensaverTimer = null;
             let screensaverCountdownTimer = null;
+            /* 循环模式：一旦首次触发，之后每 3 秒循环一次息屏 */
+            let screensaverCycleActive = false;
+            let nextCycleAt = 0;
             let lastTriggeredMinuteMap = new Map();
 
             function loadAlarms() {
@@ -4606,7 +4613,6 @@
                     const raw = AppStorage.get(ALARM_STORAGE);
                     alarms = raw ? JSON.parse(raw) : [];
                     if (!Array.isArray(alarms)) alarms = [];
-                    // 保证每个闹钟字段完整
                     alarms = alarms.map(a => ({
                         id: a.id || (Date.now() + Math.random()),
                         time: /^\d{2}:\d{2}$/.test(a.time) ? a.time : '00:00',
@@ -4636,7 +4642,6 @@
                 return str;
             }
 
-            /* 渲染闹钟列表 */
             function renderAlarmList() {
                 if (!alarmList) return;
                 if (alarms.length === 0) {
@@ -4653,7 +4658,6 @@
                 });
             }
 
-            /* 单行闹钟 */
             function renderAlarmRow(alarm) {
                 const row = document.createElement('div');
                 row.className = 'alarm-row' + (alarm.enabled && alarm.saved ? '' : ' disabled');
@@ -4693,7 +4697,6 @@
                         editDraft = Object.assign({}, alarm);
                         renderAlarmList();
                     } else if (act === 'del') {
-                        // 外部删除无需确认
                         deleteAlarmSoundBlob(alarm.id);
                         alarms = alarms.filter(a => a.id !== alarm.id);
                         saveAlarms();
@@ -4705,7 +4708,6 @@
                 return row;
             }
 
-            /* 编辑器（行内展开） */
             function renderAlarmEditor(alarm) {
                 const d = editDraft || Object.assign({}, alarm);
                 const editor = document.createElement('div');
@@ -4771,7 +4773,6 @@
                     </div>
                 `;
 
-                /* 时间按钮 */
                 editor.querySelectorAll('[data-time-act]').forEach(btn => {
                     btn.addEventListener('click', () => {
                         const act = btn.dataset.timeAct;
@@ -4803,7 +4804,6 @@
                     editDraft.time = String(hv).padStart(2,'0') + ':' + String(v).padStart(2,'0');
                 });
 
-                /* 铃声上传 */
                 editor.querySelector('#alarmSoundUpload').addEventListener('change', async (e) => {
                     const file = e.target.files && e.target.files[0];
                     if (!file) return;
@@ -4821,7 +4821,6 @@
                     e.target.value = '';
                 });
 
-                /* 恢复默认铃声 */
                 editor.querySelector('#alarmSoundReset').addEventListener('click', async () => {
                     await deleteAlarmSoundBlob(alarm.id);
                     editDraft.soundName = null;
@@ -4830,7 +4829,6 @@
                     showToast('已恢复默认铃声');
                 });
 
-                /* 选项组 */
                 editor.querySelectorAll('.alarm-option-group').forEach(group => {
                     group.addEventListener('click', (e) => {
                         const btn = e.target.closest('.alarm-option-btn');
@@ -4844,7 +4842,6 @@
                     });
                 });
 
-                /* 底部操作 */
                 editor.querySelectorAll('[data-act]').forEach(btn => {
                     btn.addEventListener('click', () => {
                         const act = btn.dataset.act;
@@ -4871,7 +4868,6 @@
                                 target.hasCustomSound = !!editDraft.hasCustomSound;
                                 target.saved = true;
                                 if (typeof target.enabled !== 'boolean') target.enabled = true;
-                                if (!target.saved) target.enabled = true;
                             }
                             saveAlarms();
                             editingAlarmId = null;
@@ -4885,7 +4881,6 @@
                 return editor;
             }
 
-            /* 创建闹钟 */
             function createAlarm() {
                 if (alarms.length >= 24) {
                     showToast('最多可创建24个闹钟');
@@ -4912,7 +4907,6 @@
                 }, 60);
             }
 
-            /* 面板开关 */
             function openAlarmPanel() {
                 if (alarmPanelOpen) { alarmPanelCountdown.reset(); return; }
                 if (settingsPanel.classList.contains('open')) closeSettings();
@@ -4932,10 +4926,8 @@
                 alarmPanel.classList.remove('open');
                 alarmPanelOpen = false;
                 alarmPanelCountdown.setPanelOpen(false);
-                // 退出编辑态（未保存的草稿直接丢弃）
                 if (editingAlarmId !== null) {
                     const draftAlarm = alarms.find(a => a.id === editingAlarmId);
-                    // 若是未保存的新建草稿，直接移除
                     if (draftAlarm && !draftAlarm.saved) {
                         alarms = alarms.filter(a => a.id !== editingAlarmId);
                         saveAlarms();
@@ -4947,14 +4939,12 @@
                 lastActivity = Date.now();
             }
 
-            /* 面板倒计时重置监听 */
             alarmPanel.addEventListener('mousemove', () => alarmPanelCountdown.reset());
             alarmPanel.addEventListener('click', () => alarmPanelCountdown.reset());
             alarmPanel.addEventListener('touchstart', () => alarmPanelCountdown.reset(), { passive: true });
             alarmPanel.addEventListener('scroll', () => alarmPanelCountdown.reset());
             alarmPanel.addEventListener('input', () => alarmPanelCountdown.reset());
 
-            /* 触发闹钟检测 */
             function checkAlarms() {
                 if (ringingState) return;
                 const now = new Date();
@@ -4979,7 +4969,6 @@
             }
             setInterval(checkAlarms, 1000);
 
-            /* 播放默认响铃（每秒一次，一次两下） */
             function startDefaultRingingBeep() {
                 if (!ringingState) return;
                 playDoubleBeep();
@@ -4989,7 +4978,6 @@
                 }, 1000);
             }
 
-            /* 触发闹钟 */
             async function triggerAlarm(alarm) {
                 if (ringingState) return;
                 ringingState = {
@@ -5001,10 +4989,8 @@
                     endTimeout: null
                 };
 
-                // 显示息屏闹钟（响铃模式）
                 showAlarmScreensaver(true, alarm);
 
-                // 播放铃声
                 if (alarm.hasCustomSound) {
                     let record = null;
                     try { record = await getAlarmSoundRecord(alarm.id); } catch (e) {}
@@ -5027,7 +5013,6 @@
                     startDefaultRingingBeep();
                 }
 
-                // 单次响铃时长
                 if (ringingState && alarm.singleRingMinutes > 0) {
                     ringingState.endTimeout = setTimeout(() => {
                         stopRinging();
@@ -5035,10 +5020,9 @@
                 }
             }
 
-            /* 停止响铃 */
             function stopRinging() {
                 if (!ringingState) {
-                    hideAlarmScreensaver();
+                    hideAlarmScreensaver(false);
                     return;
                 }
                 if (ringingState.customAudio) {
@@ -5058,31 +5042,28 @@
                     ringingState.endTimeout = null;
                 }
                 ringingState = null;
-                hideAlarmScreensaver();
+                hideAlarmScreensaver(false);
                 lastActivity = Date.now();
             }
 
-            /* 延迟提醒（Enter 或按钮） */
             function snoozeRingingAlarm() {
                 if (!ringingState) return;
                 const alarm = ringingState.alarm;
                 const repeatMin = alarm.repeatRingMinutes || 0;
 
-                // 停止当前声音但保留显示
                 if (ringingState.customAudio) { try { ringingState.customAudio.pause(); } catch (e) {} }
                 if (ringingState.customAudioUrl) { try { URL.revokeObjectURL(ringingState.customAudioUrl); } catch (e) {} }
                 if (ringingState.beepTimer) { clearInterval(ringingState.beepTimer); }
                 if (ringingState.endTimeout) { clearTimeout(ringingState.endTimeout); }
                 ringingState = null;
 
-                hideAlarmScreensaver();
+                hideAlarmScreensaver(false);
                 lastActivity = Date.now();
 
                 if (repeatMin <= 0) return;
                 setTimeout(() => { triggerAlarm(alarm); }, repeatMin * 60 * 1000);
             }
 
-            /* 判断是否可显示息屏闹钟 */
             function canShowAlarmScreensaver() {
                 const hasEnabled = alarms.some(a => a.enabled && a.saved);
                 if (!hasEnabled) return false;
@@ -5095,7 +5076,6 @@
                 return true;
             }
 
-            /* 获取最近的下一个闹钟 */
             function getNextAlarm() {
                 const now = new Date();
                 let best = null;
@@ -5123,7 +5103,6 @@
                 return String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
             }
 
-            /* 更新息屏闹钟显示内容 */
             function updateScreensaverContent() {
                 if (screensaverRinging && ringingState) {
                     asAlarmTime.innerText = formatHHMM(ringingState.alarm.time);
@@ -5141,7 +5120,6 @@
                 asCountdown.innerText = formatHMS(remaining);
             }
 
-            /* 更新按钮文案 */
             function updateScreensaverButtons(alarm) {
                 const repeatMin = alarm.repeatRingMinutes || 0;
                 asSnoozeBtn.innerText = repeatMin > 0 ? (repeatMin + '分钟后提醒我') : '结束提醒';
@@ -5167,12 +5145,15 @@
 
                 if (!isRinging) {
                     if (screensaverTimer) clearTimeout(screensaverTimer);
-                    screensaverTimer = setTimeout(() => { hideAlarmScreensaver(); }, 3000);
+                    /* 3 秒后自动隐藏，标记 fromAuto=true 以便调度下一次循环 */
+                    screensaverTimer = setTimeout(() => { hideAlarmScreensaver(true); }, 3000);
                 }
             }
 
-            /* 隐藏息屏闹钟 */
-            function hideAlarmScreensaver() {
+            /* 隐藏息屏闹钟
+             * fromAuto = true 表示由超时自动隐藏（用于调度下一次循环显示）
+             * fromAuto = false 表示由用户操作/按钮触发（不调度循环） */
+            function hideAlarmScreensaver(fromAuto) {
                 if (!screensaverActive) return;
                 screensaverActive = false;
                 alarmScreensaver.classList.remove('active');
@@ -5180,27 +5161,54 @@
                 screensaverRinging = false;
                 if (screensaverTimer) { clearTimeout(screensaverTimer); screensaverTimer = null; }
                 if (screensaverCountdownTimer) { clearInterval(screensaverCountdownTimer); screensaverCountdownTimer = null; }
+                if (fromAuto && screensaverCycleActive) {
+                    nextCycleAt = Date.now() + 3000;
+                }
             }
 
             /* 全局活动检测 */
             function markActivity() {
                 lastActivity = Date.now();
                 if (screensaverActive && !screensaverRinging) {
-                    hideAlarmScreensaver();
+                    hideAlarmScreensaver(false);
+                }
+                if (screensaverCycleActive) {
+                    screensaverCycleActive = false;
+                    nextCycleAt = 0;
                 }
             }
             ['mousemove', 'mousedown', 'touchstart', 'keydown', 'wheel', 'touchmove']
                 .forEach(ev => document.addEventListener(ev, markActivity, { passive: true, capture: true }));
 
-            /* 空闲触发 */
+            /* 空闲触发主循环
+             * - 未进入循环时：10 秒无操作触发第一次
+             * - 进入循环后：每 3 秒间隔（息 3 秒显示 + 3 秒隐藏 + 再显示） */
             setInterval(() => {
                 if (screensaverActive) return;
                 if (ringingState) return;
-                if (!canShowAlarmScreensaver()) return;
-                if (Date.now() - lastActivity >= 10000) {
-                    showAlarmScreensaver(false);
+                if (!canShowAlarmScreensaver()) {
+                    screensaverCycleActive = false;
+                    nextCycleAt = 0;
+                    return;
                 }
-            }, 1000);
+                const now = Date.now();
+                if (screensaverCycleActive) {
+                    // 若用户最近 3 秒内操作过，则退出循环
+                    if (now - lastActivity < 3000) {
+                        screensaverCycleActive = false;
+                        nextCycleAt = 0;
+                        return;
+                    }
+                    if (nextCycleAt > 0 && now >= nextCycleAt) {
+                        showAlarmScreensaver(false);
+                    }
+                } else {
+                    if (now - lastActivity >= 10000) {
+                        screensaverCycleActive = true;
+                        showAlarmScreensaver(false);
+                    }
+                }
+            }, 500);
 
             /* 响铃键盘处理（capture 阶段优先） */
             document.addEventListener('keydown', (e) => {
@@ -5211,30 +5219,26 @@
                     snoozeRingingAlarm();
                     return;
                 }
-                // 其他任意按键均结束响铃
                 e.preventDefault();
                 e.stopPropagation();
                 stopRinging();
             }, true);
 
-            /* 响铃鼠标点击 */
             document.addEventListener('mousedown', (e) => {
                 if (!ringingState) return;
                 if (e.target.closest('.as-actions')) return;
                 stopRinging();
             }, true);
 
-            /* 响铃触摸 */
             document.addEventListener('touchstart', (e) => {
                 if (!ringingState) return;
                 if (e.target.closest('.as-actions')) return;
                 stopRinging();
             }, { capture: true, passive: false });
 
-            /* 息屏闹钟按钮 */
             asEndBtn.addEventListener('click', () => {
                 if (ringingState) stopRinging();
-                else hideAlarmScreensaver();
+                else hideAlarmScreensaver(false);
             });
             asSnoozeBtn.addEventListener('click', () => {
                 if (!ringingState) return;
@@ -5243,11 +5247,9 @@
                 else stopRinging();
             });
 
-            /* 事件绑定 */
             openAlarmPanelBtn.addEventListener('click', openAlarmPanel);
             closeAlarmPanelBtn.addEventListener('click', closeAlarmPanel);
             alarmCreateBtn.addEventListener('click', () => {
-                // 若已有编辑中的草稿，先放弃
                 if (editingAlarmId !== null) {
                     const draftAlarm = alarms.find(a => a.id === editingAlarmId);
                     if (draftAlarm && !draftAlarm.saved) {
@@ -5260,7 +5262,6 @@
                 createAlarm();
             });
 
-            /* 现有键盘监听中的 Backspace 也要关闭闹钟面板 */
             document.addEventListener('keydown', (e) => {
                 if (isInputFocused()) return;
                 if (fullscreenOverlay.classList.contains('active')) {
@@ -5451,7 +5452,6 @@
                 openSettingsWithAnimation();
             });
 
-            /* 初始化 */
             try { populateCountries(); } catch (e) { console.warn('populateCountries 失败', e); }
             try { loadAlarms(); } catch (e) { console.warn('loadAlarms 失败', e); }
             try { loadPrefs(); } catch (e) { console.warn('loadPrefs 失败', e); }
@@ -5482,9 +5482,10 @@
 
             try { window.CUI4Storage = AppStorage; } catch (e) {}
 
-            console.log('CUI4 第8次修改 启动完成 | 存储模式: ' + AppStorage.getMode() +
+            console.log('CUI4 第9次修改 启动完成 | 存储模式: ' + AppStorage.getMode() +
                 (AppStorage.getDir() ? ' | 目录: ' + AppStorage.getDir() : '') +
-                ' | 闹钟数量: ' + alarms.length);
+                ' | 闹钟数量: ' + alarms.length +
+                ' | 息屏循环间隔: 3s');
         })();
     </script>
 </body>
