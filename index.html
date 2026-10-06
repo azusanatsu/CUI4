@@ -2147,7 +2147,8 @@
             • 清空历史记录 &nbsp;• 亮度 100% &nbsp;• 音量 33%<br>
             • 恢复默认提醒声 &nbsp;• 位置未选择<br>
             • 内容居中 &nbsp;• 默认比例 &nbsp;• 准时提醒开启<br>
-            • 息屏时间显示开启 &nbsp;• 初始化完成后自动重启
+            • 息屏时间显示开启 &nbsp;• 阻止系统睡眠关闭<br>
+            • 初始化完成后自动重启
         </p>
         <div class="initial-confirm-actions">
             <button class="modal-btn cancel" id="cancelInitial">取消</button>
@@ -2302,6 +2303,13 @@
                     <div class="setting-control"><div id="screenSaverTimeToggle" class="toggle-switch"></div></div>
                 </div>
             </div>
+            <div class="settings-category">
+                <div class="category-title"><i class="fas fa-plug"></i> 系统电源</div>
+                <div class="setting-row">
+                    <div class="setting-info"><span class="setting-label">阻止系统睡眠</span><div class="setting-desc">开启后屏幕保持常亮，系统不会自动息屏/休眠（需浏览器支持 Wake Lock）</div></div>
+                    <div class="setting-control"><div id="keepAwakeToggle" class="toggle-switch"></div></div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -2374,7 +2382,7 @@
 
     <script>
         /* ================================================================
-         * CUI4 主脚本 — 第12次修改 + PWA 化
+         * CUI4 主脚本 — 第13次修改 + PWA 化 + 阻止系统睡眠
          * ================================================================ */
         (function() {
             'use strict';
@@ -2732,7 +2740,8 @@
                 aiMode: false,
                 contentPosition: 'center',
                 contentSize: 'default',
-                screenSaverTimeEnabled: true
+                screenSaverTimeEnabled: true,
+                keepAwake: false
             };
 
             let prefs = Object.assign({}, DEFAULT_PREFS);
@@ -2835,6 +2844,9 @@
             const timeScreensaver = document.getElementById('timeScreensaver');
             const tsTime = document.getElementById('tsTime');
             const screenSaverTimeToggle = document.getElementById('screenSaverTimeToggle');
+
+            /* 阻止系统睡眠 DOM */
+            const keepAwakeToggle = document.getElementById('keepAwakeToggle');
 
             class CountdownTimer {
                 constructor() {
@@ -3454,6 +3466,95 @@
                 if (pwaInstallBtn) pwaInstallBtn.classList.remove('show');
                 showToast('CUI4 已安装到桌面');
             });
+
+            /* ============================================================
+             * 阻止系统睡眠（Wake Lock API）
+             * ============================================================ */
+            const wakeLockSupported = (function () {
+                try { return typeof navigator !== 'undefined' && 'wakeLock' in navigator; }
+                catch (e) { return false; }
+            })();
+
+            let wakeLockSentinel = null;
+            let wakeLockRequesting = false;
+
+            async function requestWakeLock(silent) {
+                if (!wakeLockSupported) {
+                    if (!silent) showToast('当前环境不支持阻止系统睡眠（Wake Lock 不可用）');
+                    return false;
+                }
+                if (!prefs.keepAwake) return false;
+                if (wakeLockSentinel && !wakeLockSentinel.released) return true;
+                if (wakeLockRequesting) return false;
+                if (document.visibilityState !== 'visible') return false;
+
+                wakeLockRequesting = true;
+                try {
+                    const sentinel = await navigator.wakeLock.request('screen');
+                    wakeLockSentinel = sentinel;
+                    try {
+                        sentinel.addEventListener('release', () => {
+                            if (wakeLockSentinel === sentinel) wakeLockSentinel = null;
+                        });
+                    } catch (e) {}
+                    wakeLockRequesting = false;
+                    return true;
+                } catch (err) {
+                    wakeLockRequesting = false;
+                    wakeLockSentinel = null;
+                    if (!silent) showToast('无法阻止系统睡眠：' + (err && err.message ? err.message : '未知错误'));
+                    return false;
+                }
+            }
+
+            async function releaseWakeLock() {
+                const sentinel = wakeLockSentinel;
+                wakeLockSentinel = null;
+                if (sentinel) {
+                    try { await sentinel.release(); } catch (e) {}
+                }
+            }
+
+            function setKeepAwake(enabled, silent) {
+                prefs.keepAwake = !!enabled;
+                if (keepAwakeToggle) keepAwakeToggle.classList.toggle('active', prefs.keepAwake);
+                savePrefs();
+
+                if (prefs.keepAwake) {
+                    requestWakeLock(silent).then(ok => {
+                        if (!silent) {
+                            if (ok) showToast('已阻止系统睡眠，屏幕将保持常亮');
+                            else if (!wakeLockSupported) showToast('当前环境不支持阻止系统睡眠');
+                        }
+                    });
+                } else {
+                    releaseWakeLock();
+                    if (!silent) showToast('已允许系统正常睡眠');
+                }
+            }
+
+            /* 页面重新可见时恢复 Wake Lock（浏览器会在隐藏时自动释放） */
+            document.addEventListener('visibilitychange', function () {
+                if (document.visibilityState === 'visible' && prefs.keepAwake) {
+                    requestWakeLock(true);
+                }
+            });
+
+            /* 用户首次交互时补一次请求（部分浏览器要求用户激活） */
+            ['click', 'keydown', 'touchstart'].forEach(function (ev) {
+                document.addEventListener(ev, function onceHandler() {
+                    if (prefs.keepAwake) requestWakeLock(true);
+                    ['click', 'keydown', 'touchstart'].forEach(function (e2) {
+                        document.removeEventListener(e2, onceHandler);
+                    });
+                }, { passive: true });
+            });
+
+            if (keepAwakeToggle) {
+                keepAwakeToggle.addEventListener('click', function () {
+                    setKeepAwake(!prefs.keepAwake, false);
+                });
+            }
 
             /* 功能栏 */
             let funcCountdownTimer = null;
@@ -4587,6 +4688,16 @@
                     }
                 } catch (e) {}
 
+                /* 恢复「阻止系统睡眠」状态 */
+                try {
+                    if (keepAwakeToggle) {
+                        keepAwakeToggle.classList.toggle('active', !!prefs.keepAwake);
+                    }
+                    if (prefs.keepAwake) {
+                        requestWakeLock(true);
+                    }
+                } catch (e) { console.warn('初始化屏幕常亮失败', e); }
+
                 try {
                     if (prefs.wallpaperType === 'video') {
                         restoreVideoWallpaper();
@@ -4749,7 +4860,7 @@
                 function hideStep(step, cb) {
                     step.style.transition = 'opacity 0.24s ease';
                     step.style.opacity = '0';
-                    setTimeout(() => { if (step.parentNode) step.remove(); if (cb) cb(); }, 250);
+                    setTimeout(() => { if (step.parentNode) step.parentNode.removeChild(step); if (cb) cb(); }, 250);
                 }
 
                 const step1 = createStep('正在重新启动', true);
@@ -4826,6 +4937,11 @@
 
                 prefs.screenSaverTimeEnabled = true;
                 if (screenSaverTimeToggle) screenSaverTimeToggle.classList.add('active');
+
+                /* 重置「阻止系统睡眠」 */
+                prefs.keepAwake = false;
+                if (keepAwakeToggle) keepAwakeToggle.classList.remove('active');
+                releaseWakeLock();
 
                 updateDateTime();
                 savePrefs();
@@ -5947,6 +6063,7 @@
                 try { document.removeEventListener('keydown', calcKeyHandler); } catch (e) {}
                 try { if (ringingState) stopRinging(); } catch (e) {}
                 try { cancelShiftAction(); } catch (e) {}
+                try { releaseWakeLock(); } catch (e) {}
             });
 
             try { window.CUI4Storage = AppStorage; } catch (e) {}
@@ -5955,6 +6072,8 @@
                 (AppStorage.getDir() ? ' | 目录: ' + AppStorage.getDir() : '') +
                 ' | 闹钟数量: ' + alarms.length +
                 ' | 息屏时间显示: ' + (prefs.screenSaverTimeEnabled ? 'ON' : 'OFF') +
+                ' | 阻止系统睡眠: ' + (prefs.keepAwake ? 'ON' : 'OFF') +
+                (wakeLockSupported ? '' : ' (Wake Lock 不支持)') +
                 ' | PWA: ' + (isStandaloneMode ? '已安装模式' : '浏览器模式'));
         })();
     </script>
