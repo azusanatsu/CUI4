@@ -25,5 +25,8 @@
   ],
   "theme_color": "#121826",
   "background_color": "#0f131c",
-  "display": "standalone"
+  "display": "standalone",
+  "launch_handler": {
+    "client_mode": "focus-existing"
+  }
 }
