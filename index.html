@@ -1964,6 +1964,40 @@
         }
         .as-btn-end:hover { background: var(--tabs-active); filter: brightness(1.15); }
 
+        /* ============================================================
+         * 新增：息屏时间显示
+         * 与闹钟息屏相同的位置逻辑（固定层，z-index 同 8000），
+         * 只显示当前时间，字号比闹钟倒计时更大。
+         * ============================================================ */
+        .time-screensaver {
+            position: fixed;
+            inset: 0;
+            background: #000;
+            z-index: 8000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.55s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #e8eefc;
+        }
+        .time-screensaver.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .ts-time {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: clamp(4rem, 18vw, 15rem);
+            font-weight: 600;
+            letter-spacing: 10px;
+            color: #ffffff;
+            text-shadow: 0 0 40px rgba(140, 180, 255, 0.3);
+            line-height: 1;
+            text-align: center;
+            padding: 0 2vw;
+        }
+
         @media (max-width: 640px) {
             .alarm-title { font-size: 0.95rem; }
             .alarm-title span { display: inline; }
@@ -1978,6 +2012,8 @@
             .as-side { font-size: 0.95rem; letter-spacing: 3px; }
             .as-actions { padding: 0 20px 40px; gap: 12px; }
             .as-btn { padding: 12px 20px; font-size: 0.9rem; }
+            /* 新增：息屏时间显示移动端字号 */
+            .ts-time { font-size: clamp(3rem, 22vw, 8rem); letter-spacing: 6px; }
         }
     </style>
 </head>
@@ -2209,6 +2245,12 @@
                     <div class="setting-info"><span class="setting-label">CUI4内置闹钟</span><div class="setting-desc">公开测试版 · 最多24个闹钟（↓ 方向键快捷开启/关闭）</div></div>
                     <div class="setting-control"><button id="openAlarmPanelBtn" class="file-label" style="background:var(--tabs-active);"><i class="fas fa-clock"></i> 打开闹钟</button></div>
                 </div>
+                <!-- ===== 新增：息屏时间显示开关 ===== -->
+                <div class="setting-row">
+                    <div class="setting-info"><span class="setting-label">息屏时间显示</span><div class="setting-desc">10秒无操作后循环息屏显示当前时间（与闹钟可轮播，时间优先）</div></div>
+                    <div class="setting-control"><div id="screenSaverTimeToggle" class="toggle-switch"></div></div>
+                </div>
+                <!-- ===== 新增结束 ===== -->
             </div>
         </div>
     </div>
@@ -2275,13 +2317,21 @@
         </div>
     </div>
 
+    <!-- ===== 新增：息屏时间显示 ===== -->
+    <div class="time-screensaver" id="timeScreensaver">
+        <div class="ts-time" id="tsTime">--:--:--</div>
+    </div>
+    <!-- ===== 新增结束 ===== -->
+
     <script>
         /* ================================================================
-         * CUI4 主脚本 — 第9次修改
-         * 修改：息屏闹钟循环间隔改为 3 秒
-         *   - 首次触发仍是「10 秒无操作」
-         *   - 息屏显示 3 秒 → 隐藏 → 回到主内容 3 秒 → 再次息屏 → 循环
+         * CUI4 主脚本 — 第10次修改
+         * 修改：新增「息屏时间显示」开关 + 与息屏闹钟的三模式轮播
+         *   - 单独开「息屏时间显示」：主内容10s无操作 → 时间3s → 主内容3s → 时间3s → …
+         *   - 单独开「息屏闹钟显示」：原逻辑（10s无操作 → 闹钟3s → 主内容3s → 闹钟3s → …）
+         *   - 两者都开：时间 → 主内容 → 闹钟 → 主内容 → 时间 → … （时间永远在前）
          *   - 用户任何操作（触摸/光标/键入）立即退出循环，重新按 10 秒规则等待
+         *   - 闹钟响铃时直接抢占（优先级最高）
          * ================================================================ */
         (function() {
             'use strict';
@@ -2552,9 +2602,7 @@
                 } catch (e) { console.warn('恢复自定义提醒声失败', e); }
             }
 
-            /* ============================================================
-             * 闹钟模块 - IndexedDB 铃声存储
-             * ============================================================ */
+            /* 闹钟模块 - IndexedDB 铃声存储 */
             const ALARM_SOUND_DB = 'CUI4_AlarmSoundDB';
             const ALARM_SOUND_STORE = 'alarmSounds';
             let alarmSoundDbInstance = null;
@@ -2640,7 +2688,9 @@
                 准时提醒: true,
                 aiMode: false,
                 contentPosition: 'center',
-                contentSize: 'default'
+                contentSize: 'default',
+                /* ===== 新增：息屏时间显示开关 ===== */
+                screenSaverTimeEnabled: false
             };
 
             let prefs = Object.assign({}, DEFAULT_PREFS);
@@ -2737,6 +2787,12 @@
             const asCountdown = document.getElementById('asCountdown');
             const asEndBtn = document.getElementById('asEndBtn');
             const asSnoozeBtn = document.getElementById('asSnoozeBtn');
+
+            /* ===== 新增：息屏时间显示 DOM ===== */
+            const timeScreensaver = document.getElementById('timeScreensaver');
+            const tsTime = document.getElementById('tsTime');
+            const screenSaverTimeToggle = document.getElementById('screenSaverTimeToggle');
+            /* ===== 新增结束 ===== */
 
             class CountdownTimer {
                 constructor() {
@@ -4354,6 +4410,14 @@
 
                 try { wallpaperSoundToggle.classList.toggle('active', prefs.wallpaperSoundEnabled); } catch (e) {}
 
+                /* ===== 新增：恢复息屏时间显示开关状态 ===== */
+                try {
+                    if (screenSaverTimeToggle) {
+                        screenSaverTimeToggle.classList.toggle('active', !!prefs.screenSaverTimeEnabled);
+                    }
+                } catch (e) {}
+                /* ===== 新增结束 ===== */
+
                 try {
                     if (prefs.wallpaperType === 'video') {
                         restoreVideoWallpaper();
@@ -4584,6 +4648,12 @@
                 updatePositionUI();
                 updateSizeUI();
                 prefs.准时提醒 = true;
+
+                /* ===== 新增：初始化时也重置息屏时间显示 ===== */
+                prefs.screenSaverTimeEnabled = false;
+                if (screenSaverTimeToggle) screenSaverTimeToggle.classList.remove('active');
+                /* ===== 新增结束 ===== */
+
                 updateDateTime();
                 savePrefs();
                 setTimeout(() => {
@@ -4607,6 +4677,13 @@
             let screensaverCycleActive = false;
             let nextCycleAt = 0;
             let lastTriggeredMinuteMap = new Map();
+
+            /* ===== 新增：息屏时间显示 / 轮播状态 ===== */
+            let screensaverKind = null;        // null | 'time' | 'alarm'
+            let timeScreensaverTimer = null;    // 3 秒显示计时
+            let timeScreensaverUpdateTimer = null; // 当前时间刷新计时
+            let screensaverCyclePhase = null;   // 'time' | 'alarm' —— 下一帧该显示谁
+            /* ===== 新增结束 ===== */
 
             function loadAlarms() {
                 try {
@@ -4980,6 +5057,13 @@
 
             async function triggerAlarm(alarm) {
                 if (ringingState) return;
+
+                /* ===== 新增：闹钟响铃时，如果正在显示时间息屏，先隐藏 ===== */
+                if (screensaverActive && screensaverKind === 'time') {
+                    hideTimeScreensaver(false);
+                }
+                /* ===== 新增结束 ===== */
+
                 ringingState = {
                     alarm: Object.assign({}, alarm),
                     alarmId: alarm.id,
@@ -5064,9 +5148,11 @@
                 setTimeout(() => { triggerAlarm(alarm); }, repeatMin * 60 * 1000);
             }
 
-            function canShowAlarmScreensaver() {
-                const hasEnabled = alarms.some(a => a.enabled && a.saved);
-                if (!hasEnabled) return false;
+            /* ===== 修改：canShowScreensaver 兼容时间息屏 ===== */
+            function canShowScreensaver() {
+                const timeEnabled = !!prefs.screenSaverTimeEnabled;
+                const alarmEnabled = alarms.some(a => a.enabled && a.saved);
+                if (!timeEnabled && !alarmEnabled) return false;
                 if (settingsPanel.classList.contains('open')) return false;
                 if (taskPanel.classList.contains('open')) return false;
                 if (initialConfirmPanel.classList.contains('show')) return false;
@@ -5127,6 +5213,12 @@
 
             /* 显示息屏闹钟 */
             function showAlarmScreensaver(isRinging, alarm) {
+                /* ===== 新增：若正在显示时间息屏，先隐藏它 ===== */
+                if (screensaverActive && screensaverKind === 'time') {
+                    hideTimeScreensaver(false);
+                }
+                /* ===== 新增结束 ===== */
+
                 if (isRinging) {
                     screensaverRinging = true;
                     alarmScreensaver.classList.add('ringing');
@@ -5137,6 +5229,7 @@
                     return;
                 }
                 screensaverActive = true;
+                screensaverKind = 'alarm'; /* ===== 新增 ===== */
                 alarmScreensaver.classList.add('active');
                 updateScreensaverContent();
 
@@ -5154,8 +5247,10 @@
              * fromAuto = true 表示由超时自动隐藏（用于调度下一次循环显示）
              * fromAuto = false 表示由用户操作/按钮触发（不调度循环） */
             function hideAlarmScreensaver(fromAuto) {
-                if (!screensaverActive) return;
+                /* ===== 修改：只隐藏闹钟类型的息屏 ===== */
+                if (!screensaverActive || screensaverKind !== 'alarm') return;
                 screensaverActive = false;
+                screensaverKind = null;
                 alarmScreensaver.classList.remove('active');
                 alarmScreensaver.classList.remove('ringing');
                 screensaverRinging = false;
@@ -5166,15 +5261,95 @@
                 }
             }
 
+            /* ============================================================
+             * 新增：息屏时间显示 —— 显示/隐藏/刷新
+             * ============================================================ */
+            function updateTimeScreensaverContent() {
+                if (!tsTime) return;
+                const now = new Date();
+                const hh = String(now.getHours()).padStart(2, '0');
+                const mm = String(now.getMinutes()).padStart(2, '0');
+                const ss = String(now.getSeconds()).padStart(2, '0');
+                tsTime.innerText = `${hh}:${mm}:${ss}`;
+            }
+
+            function showTimeScreensaver() {
+                if (screensaverActive) {
+                    updateTimeScreensaverContent();
+                    return;
+                }
+                screensaverActive = true;
+                screensaverKind = 'time';
+                timeScreensaver.classList.add('active');
+                updateTimeScreensaverContent();
+
+                if (timeScreensaverUpdateTimer) clearInterval(timeScreensaverUpdateTimer);
+                timeScreensaverUpdateTimer = setInterval(updateTimeScreensaverContent, 500);
+
+                if (timeScreensaverTimer) clearTimeout(timeScreensaverTimer);
+                /* 3 秒后自动隐藏，标记 fromAuto=true 以便调度下一次循环 */
+                timeScreensaverTimer = setTimeout(() => { hideTimeScreensaver(true); }, 3000);
+            }
+
+            function hideTimeScreensaver(fromAuto) {
+                if (!screensaverActive || screensaverKind !== 'time') return;
+                screensaverActive = false;
+                screensaverKind = null;
+                timeScreensaver.classList.remove('active');
+                if (timeScreensaverTimer) { clearTimeout(timeScreensaverTimer); timeScreensaverTimer = null; }
+                if (timeScreensaverUpdateTimer) { clearInterval(timeScreensaverUpdateTimer); timeScreensaverUpdateTimer = null; }
+                if (fromAuto && screensaverCycleActive) {
+                    nextCycleAt = Date.now() + 3000;
+                }
+            }
+
+            /* ============================================================
+             * 新增：轮播调度器
+             * - 两种都开：时间 → 闹钟 → 时间 → 闹钟 ……
+             * - 只开时间：时间 → 时间 → ……
+             * - 只开闹钟：闹钟 → 闹钟 → ……
+             * ============================================================ */
+            function displayNextScreensaver() {
+                const timeEnabled = !!prefs.screenSaverTimeEnabled;
+                const alarmEnabled = alarms.some(a => a.enabled && a.saved);
+
+                let showTime = false;
+                if (screensaverCyclePhase === 'time' && timeEnabled) {
+                    showTime = true;
+                } else if (screensaverCyclePhase === 'alarm' && alarmEnabled) {
+                    showTime = false;
+                } else if (timeEnabled) {
+                    /* 阶段失效，但时间还开着 → 时间优先 */
+                    showTime = true;
+                } else if (alarmEnabled) {
+                    showTime = false;
+                } else {
+                    return;
+                }
+
+                if (showTime) {
+                    showTimeScreensaver();
+                    /* 两种都开 → 下一帧闹钟；只开时间 → 保持时间 */
+                    screensaverCyclePhase = alarmEnabled ? 'alarm' : 'time';
+                } else {
+                    showAlarmScreensaver(false);
+                    /* 两种都开 → 下一帧时间；只开闹钟 → 保持闹钟 */
+                    screensaverCyclePhase = timeEnabled ? 'time' : 'alarm';
+                }
+            }
+
             /* 全局活动检测 */
             function markActivity() {
                 lastActivity = Date.now();
                 if (screensaverActive && !screensaverRinging) {
-                    hideAlarmScreensaver(false);
+                    /* ===== 修改：按类型隐藏对应息屏 ===== */
+                    if (screensaverKind === 'time') hideTimeScreensaver(false);
+                    else if (screensaverKind === 'alarm') hideAlarmScreensaver(false);
                 }
                 if (screensaverCycleActive) {
                     screensaverCycleActive = false;
                     nextCycleAt = 0;
+                    screensaverCyclePhase = null; /* ===== 新增 ===== */
                 }
             }
             ['mousemove', 'mousedown', 'touchstart', 'keydown', 'wheel', 'touchmove']
@@ -5182,13 +5357,15 @@
 
             /* 空闲触发主循环
              * - 未进入循环时：10 秒无操作触发第一次
-             * - 进入循环后：每 3 秒间隔（息 3 秒显示 + 3 秒隐藏 + 再显示） */
+             * - 进入循环后：每 3 秒间隔（息 3 秒显示 + 3 秒隐藏 + 再显示）
+             * - 首个显示的息屏：若时间开启则为时间，否则为闹钟 */
             setInterval(() => {
                 if (screensaverActive) return;
                 if (ringingState) return;
-                if (!canShowAlarmScreensaver()) {
+                if (!canShowScreensaver()) {
                     screensaverCycleActive = false;
                     nextCycleAt = 0;
+                    screensaverCyclePhase = null;
                     return;
                 }
                 const now = Date.now();
@@ -5197,15 +5374,19 @@
                     if (now - lastActivity < 3000) {
                         screensaverCycleActive = false;
                         nextCycleAt = 0;
+                        screensaverCyclePhase = null;
                         return;
                     }
                     if (nextCycleAt > 0 && now >= nextCycleAt) {
-                        showAlarmScreensaver(false);
+                        nextCycleAt = 0;
+                        displayNextScreensaver();
                     }
                 } else {
                     if (now - lastActivity >= 10000) {
                         screensaverCycleActive = true;
-                        showAlarmScreensaver(false);
+                        /* 首次触发：优先时间息屏（若开启），否则闹钟 */
+                        screensaverCyclePhase = prefs.screenSaverTimeEnabled ? 'time' : 'alarm';
+                        displayNextScreensaver();
                     }
                 }
             }, 500);
@@ -5261,6 +5442,17 @@
                 }
                 createAlarm();
             });
+
+            /* ===== 新增：息屏时间显示开关 ===== */
+            if (screenSaverTimeToggle) {
+                screenSaverTimeToggle.addEventListener('click', function() {
+                    prefs.screenSaverTimeEnabled = !prefs.screenSaverTimeEnabled;
+                    this.classList.toggle('active', prefs.screenSaverTimeEnabled);
+                    savePrefs();
+                    showToast(prefs.screenSaverTimeEnabled ? '息屏时间显示已开启' : '息屏时间显示已关闭');
+                });
+            }
+            /* ===== 新增结束 ===== */
 
             document.addEventListener('keydown', (e) => {
                 if (isInputFocused()) return;
@@ -5482,9 +5674,10 @@
 
             try { window.CUI4Storage = AppStorage; } catch (e) {}
 
-            console.log('CUI4 第9次修改 启动完成 | 存储模式: ' + AppStorage.getMode() +
+            console.log('CUI4 第10次修改 启动完成 | 存储模式: ' + AppStorage.getMode() +
                 (AppStorage.getDir() ? ' | 目录: ' + AppStorage.getDir() : '') +
                 ' | 闹钟数量: ' + alarms.length +
+                ' | 息屏时间显示: ' + (prefs.screenSaverTimeEnabled ? 'ON' : 'OFF') +
                 ' | 息屏循环间隔: 3s');
         })();
     </script>
