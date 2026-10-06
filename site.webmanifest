@@ -28,5 +28,14 @@
   "display": "standalone",
   "launch_handler": {
     "client_mode": "focus-existing"
-  }
+  },
+  "screenshots": [
+    {
+      "src": "./screenshots/desktop.png",
+      "sizes": "2848x1600",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "CUI4 主界面"
+    }
+  ]
 }
