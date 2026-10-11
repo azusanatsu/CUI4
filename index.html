@@ -1953,6 +1953,7 @@
         /* ============================================================
          * 息屏时间显示
          * 字号随主内容大小联动（body.size-*）
+         * 数字使用固定宽度 span，避免切换时左右移动
          * ============================================================ */
         .time-screensaver {
             position: fixed;
@@ -1975,13 +1976,30 @@
             font-family: 'TFont', 'JetBrains Mono', monospace;
             font-size: clamp(5rem, 20vw, 22rem);
             font-weight: 600;
-            letter-spacing: 8px;
+            letter-spacing: 0;
             color: #ffffff;
             text-shadow: 0 0 40px rgba(140, 180, 255, 0.3);
             line-height: 1;
-            text-align: center;
             padding: 0 2vw;
             transition: font-size 0.4s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        /* 每个数字固定宽度，冒号稍窄，整体宽度恒定，居中不漂移 */
+        .ts-time .ts-ch,
+        .ts-time .ts-sep {
+            display: inline-block;
+            text-align: center;
+            font-variant-numeric: tabular-nums;
+            font-feature-settings: "tnum" 1;
+            font-variant-ligatures: none;
+        }
+        .ts-time .ts-ch {
+            width: 0.62em;
+        }
+        .ts-time .ts-sep {
+            width: 0.34em;
         }
         /* 主内容大小联动（大） */
         body.size-large .ts-time {
@@ -2115,7 +2133,7 @@
             .as-countdown { font-size: clamp(2.4rem, 18vw, 8rem); letter-spacing: 3px; }
             .as-actions { padding: 0 20px 40px; gap: 12px; }
             .as-btn { padding: 12px 20px; font-size: 0.9rem; }
-            .ts-time { font-size: clamp(3rem, 22vw, 9rem); letter-spacing: 4px; }
+            .ts-time { font-size: clamp(3rem, 22vw, 9rem); letter-spacing: 0; }
 
             /* 移动端：息屏字号大小联动覆盖 */
             body.size-large .ts-time {
@@ -2128,7 +2146,7 @@
                 font-size: clamp(3rem, 21vw, 9.5rem);
             }
             body.size-small .as-countdown {
-                font-size: clamp(2rem, 15vw, 6.5rem);
+                font-size: clamp(2.5rem, 15vw, 6.5rem);
             }
         }
     </style>
@@ -2458,6 +2476,7 @@
         /* ================================================================
          * CUI4 主脚本 — 第12次修改 + PWA 化 + 一直息屏 + 字号联动
          *                 + 阻止系统睡眠（Wake Lock）
+         *                 + 息屏时间数字固定宽度（避免跳动）
          * ================================================================ */
         (function() {
             'use strict';
@@ -5069,6 +5088,21 @@
             let alwaysOnAlarmUpdateTimer = null;
             let alwaysOnAlarmVisible = false;
 
+            /* 息屏时间显示：固定宽度数字字符结构 */
+            const TS_LAYOUT = ['n','n','s','n','n','s','n','n'];
+            function initTimeScreensaverChars() {
+                const el = document.getElementById('tsTime');
+                if (!el) return;
+                if (el.children.length === 8) return;
+                el.innerHTML = '';
+                TS_LAYOUT.forEach(function(t) {
+                    const span = document.createElement('span');
+                    span.className = (t === 's') ? 'ts-sep' : 'ts-ch';
+                    span.textContent = (t === 's') ? ':' : '-';
+                    el.appendChild(span);
+                });
+            }
+
             function loadAlarms() {
                 try {
                     const raw = AppStorage.get(ALARM_STORAGE);
@@ -5729,13 +5763,23 @@
                 }
             }
 
+            /* 息屏时间显示：逐字符更新固定宽度数字，避免整体宽度变化 */
             function updateTimeScreensaverContent() {
-                if (!tsTime) return;
+                const el = document.getElementById('tsTime');
+                if (!el) return;
+                if (el.children.length !== 8) initTimeScreensaverChars();
+
                 const now = new Date();
                 const hh = String(now.getHours()).padStart(2, '0');
                 const mm = String(now.getMinutes()).padStart(2, '0');
                 const ss = String(now.getSeconds()).padStart(2, '0');
-                tsTime.innerText = `${hh}:${mm}:${ss}`;
+                const str = hh + ':' + mm + ':' + ss;
+
+                const kids = el.children;
+                for (let i = 0; i < 8 && i < kids.length; i++) {
+                    const c = str.charAt(i);
+                    if (kids[i].textContent !== c) kids[i].textContent = c;
+                }
             }
 
             function showTimeScreensaver() {
@@ -6275,6 +6319,7 @@
             try { updateFixedWidgets(); } catch (e) {}
             try { setTimeout(checkHourlyAlarm, 1000); } catch (e) {}
             try { updateFullscreenIcon(); } catch (e) {}
+            try { initTimeScreensaverChars(); } catch (e) { console.warn('初始化息屏时间字符失败', e); }
 
             (async () => {
                 try { await restoreCustomSound(); } catch (e) { console.warn('恢复提醒声失败', e); }
