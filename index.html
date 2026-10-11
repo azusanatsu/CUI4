@@ -2332,7 +2332,8 @@
             • 恢复默认提醒声 &nbsp;• 位置未选择<br>
             • 内容居中 &nbsp;• 默认比例 &nbsp;• 准时提醒开启<br>
             • 息屏时间显示开启 &nbsp;• 一直息屏时间显示关闭<br>
-            • 阻止系统睡眠关闭 &nbsp;• 初始化完成后自动重启
+            • 阻止系统睡眠关闭 &nbsp;• 时间偏好：同步系统时间<br>
+            • 初始化完成后自动重启
         </p>
         <div class="initial-confirm-actions">
             <button class="modal-btn cancel" id="cancelInitial">取消</button>
@@ -2464,6 +2465,30 @@
                     <div class="setting-row">
                         <div class="setting-info"></div>
                         <div class="setting-control"><button id="applyLocationBtn" class="file-label">应用并更新天气</button></div>
+                    </div>
+                </div>
+
+                <!-- ============ 时间偏好（新增） ============ -->
+                <div class="settings-category">
+                    <div class="category-title"><i class="fas fa-clock"></i> 时间偏好</div>
+                    <div class="setting-row">
+                        <div class="setting-info">
+                            <span class="setting-label">时间来源</span>
+                            <div class="setting-desc" id="timePreferenceDesc">当前使用本机系统时间</div>
+                        </div>
+                        <div class="setting-control theme-buttons" id="timePreferenceGroup">
+                            <span data-time-pref="system" class="theme-btn active">同步系统时间</span>
+                            <span data-time-pref="network" class="theme-btn">访问网络时间</span>
+                        </div>
+                    </div>
+                    <div class="setting-row" id="networkTimeInfoRow" style="display:none;">
+                        <div class="setting-info">
+                            <span class="setting-label">时区与时差</span>
+                            <div class="setting-desc" id="networkTimeZoneInfo">尚未获取</div>
+                        </div>
+                        <div class="setting-control">
+                            <button id="refreshNetworkTimeBtn" class="file-label"><i class="fas fa-sync-alt"></i> 重新获取</button>
+                        </div>
                     </div>
                 </div>
 
@@ -2647,6 +2672,10 @@
          *                 + 搜索成功后清空搜索栏并写入地址栏
          *                 + ESC 键在设置内：子页面返回上一级，根页面关闭设置
          *                   面板关闭后 ESC 恢复原本作用（不拦截）
+         *                 + 时间偏好：同步系统时间 / 访问网络时间
+         *                   （按设置地点自动解析时区与时差；
+         *                     无法确定时区时回退北京时间；
+         *                     Intl 不可用时自动切回同步系统时间）
          * ================================================================ */
         (function() {
             'use strict';
@@ -2990,6 +3019,7 @@
             const DEFAULT_PREFS = {
                 themeMode: 'dark',
                 userName: 'CUI4 USER',
+                timePreference: 'system',   // 'system' | 'network'
                 wallpaperType: 'default',
                 wallpaperData: null,
                 brightness: 100,
@@ -4971,6 +5001,11 @@
                     fetchWeatherByCity(city);
                 }
                 savePrefs();
+
+                // 网络时间模式下，地点改变后重新解析时区
+                if (prefs.timePreference === 'network') {
+                    syncNetworkTime(false);
+                }
             }
 
             function savePrefs() {
@@ -4991,6 +5026,8 @@
                         } catch (e) {}
                     }
                 } catch (e) {}
+
+                if (prefs.timePreference !== 'network') prefs.timePreference = 'system';
 
                 try { usernameInput.value = prefs.userName; } catch (e) {}
                 try { brightnessSlider.value = prefs.brightness; } catch (e) {}
@@ -5013,6 +5050,8 @@
                     }
                     updateLocationDisplay();
                 } catch (e) { console.warn('初始化位置失败', e); }
+
+                try { updateTimePreferenceUI(); } catch (e) { console.warn('初始化时间偏好失败', e); }
 
                 try { wallpaperSoundToggle.classList.toggle('active', prefs.wallpaperSoundEnabled); } catch (e) {}
 
@@ -5066,12 +5105,12 @@
 
             function applyThemeFromPref() {
                 const mode = prefs.themeMode;
-                const hour = new Date().getHours();
+                const hour = getDisplayDate().getHours();
                 let isDark = false;
                 if (mode === 'auto') isDark = (hour >= 18 || hour < 6);
                 else if (mode === 'dark') isDark = true;
                 document.body.classList.toggle('dark', isDark);
-                document.querySelectorAll('.theme-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.theme === prefs.themeMode));
+                document.querySelectorAll('.theme-btn[data-theme]').forEach(btn => btn.classList.toggle('active', btn.dataset.theme === prefs.themeMode));
 
                 try {
                     const meta = document.querySelector('meta[name="theme-color"]');
@@ -5079,8 +5118,220 @@
                 } catch (e) {}
             }
 
+            /* ============================================================
+             * 时间偏好：时区映射 + 当地/网络时间工具
+             * - 通过设置的地点自动解析 IANA 时区
+             * - 用 Intl.DateTimeFormat 计算真实时差（含夏令时）
+             * - 无法确定时区 → 回退北京时间
+             * - Intl 亦不可用 → 自动切回「同步系统时间」
+             * ============================================================ */
+            const DEFAULT_TIMEZONE = 'Asia/Shanghai';   // 回退：北京时间
+
+            const TIMEZONE_MAP = {
+                '中国': { __default: 'Asia/Shanghai' },
+                '美国': {
+                    'California': 'America/Los_Angeles',
+                    'New York':   'America/New_York',
+                    'Texas':      'America/Chicago',
+                    __default:    'America/New_York'
+                },
+                '日本': { __default: 'Asia/Tokyo' },
+                '英国': { __default: 'Europe/London' }
+            };
+
+            const TIMEZONE_LABELS = {
+                'Asia/Shanghai':       '北京时间',
+                'Asia/Tokyo':          '日本时间',
+                'America/Los_Angeles': '美国太平洋时间',
+                'America/New_York':    '美国东部时间',
+                'America/Chicago':     '美国中部时间',
+                'Europe/London':       '英国时间'
+            };
+
+            let networkTimeState = {
+                timeZone: null,     // 生效的 IANA 时区
+                valid: false,
+                fallback: false,    // 是否走了北京时间回退
+                lastSync: 0
+            };
+
+            /* 从当前地点解析时区；返回 null 表示无法解析 */
+            function resolveTimeZoneFromLocation() {
+                const country = prefs.locationCountry || '未选择';
+                const state   = prefs.locationState   || '未选择';
+                if (country === '未选择') return null;
+                const cm = TIMEZONE_MAP[country];
+                if (!cm) return null;
+                return cm[state] || cm.__default || null;
+            }
+
+            function isTimeZoneSupported(tz) {
+                try {
+                    new Intl.DateTimeFormat('en-US', { timeZone: tz }).format(new Date());
+                    return true;
+                } catch (e) { return false; }
+            }
+
+            /* 取某时区在指定时刻的 UTC 偏移（分钟，含夏令时） */
+            function getTimeZoneOffsetMinutes(timeZone, date) {
+                const dtf = new Intl.DateTimeFormat('en-US', {
+                    timeZone: timeZone,
+                    hour12: false,
+                    year: 'numeric', month: '2-digit', day: '2-digit',
+                    hour: '2-digit', minute: '2-digit', second: '2-digit'
+                });
+                const parts = dtf.formatToParts(date || new Date());
+                const o = {};
+                parts.forEach(p => { if (p.type !== 'literal') o[p.type] = p.value; });
+                let hour = parseInt(o.hour, 10);
+                if (hour === 24) hour = 0;
+                const asUTC = Date.UTC(
+                    parseInt(o.year, 10),
+                    parseInt(o.month, 10) - 1,
+                    parseInt(o.day, 10),
+                    hour,
+                    parseInt(o.minute, 10),
+                    parseInt(o.second, 10)
+                );
+                return Math.round((asUTC - date.getTime()) / 60000);
+            }
+
+            /* 取某时区下的年月日时分秒 */
+            function getDatePartsInZone(timeZone, date) {
+                const dtf = new Intl.DateTimeFormat('en-US', {
+                    timeZone: timeZone,
+                    hour12: false,
+                    year: 'numeric', month: '2-digit', day: '2-digit',
+                    hour: '2-digit', minute: '2-digit', second: '2-digit'
+                });
+                const parts = dtf.formatToParts(date || new Date());
+                const o = {};
+                parts.forEach(p => { if (p.type !== 'literal') o[p.type] = p.value; });
+                let hour = parseInt(o.hour, 10);
+                if (hour === 24) hour = 0;
+                return {
+                    year:   parseInt(o.year, 10),
+                    month:  parseInt(o.month, 10),
+                    day:    parseInt(o.day, 10),
+                    hour:   hour,
+                    minute: parseInt(o.minute, 10),
+                    second: parseInt(o.second, 10)
+                };
+            }
+
+            /* 统一入口：返回“当前要显示的 Date”
+             * network 模式下返回该时区的墙上时间（其 getHours() 等即为当地时间） */
+            function getDisplayDate() {
+                if (prefs.timePreference === 'network' && networkTimeState.valid && networkTimeState.timeZone) {
+                    try {
+                        const p = getDatePartsInZone(networkTimeState.timeZone, new Date());
+                        return new Date(p.year, p.month - 1, p.day, p.hour, p.minute, p.second);
+                    } catch (e) {
+                        // 时区不受支持 → 静默退回系统时间
+                    }
+                }
+                return new Date();
+            }
+
+            function formatOffset(minutes) {
+                const sign = minutes >= 0 ? '+' : '-';
+                const abs = Math.abs(minutes);
+                const h = Math.floor(abs / 60);
+                const m = abs % 60;
+                return `UTC${sign}${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+            }
+
+            /* 同步 / 应用网络时间 */
+            function syncNetworkTime(showMsg) {
+                let tz = resolveTimeZoneFromLocation();
+                let fallbackUsed = false;
+
+                if (!tz) {
+                    tz = DEFAULT_TIMEZONE;
+                    fallbackUsed = true;
+                }
+
+                if (!isTimeZoneSupported(tz)) {
+                    if (tz !== DEFAULT_TIMEZONE && isTimeZoneSupported(DEFAULT_TIMEZONE)) {
+                        tz = DEFAULT_TIMEZONE;
+                        fallbackUsed = true;
+                    } else {
+                        // Intl 完全不可用 → 切回同步系统时间
+                        networkTimeState = { timeZone: null, valid: false, fallback: false, lastSync: 0 };
+                        prefs.timePreference = 'system';
+                        savePrefs();
+                        updateTimePreferenceUI();
+                        updateDateTime();
+                        if (showMsg) showToast('无法获取当地时间，已切换回「同步系统时间」');
+                        return false;
+                    }
+                }
+
+                networkTimeState = {
+                    timeZone: tz,
+                    valid: true,
+                    fallback: fallbackUsed,
+                    lastSync: Date.now()
+                };
+
+                updateTimePreferenceUI();
+                updateDateTime();
+                updateTimeScreensaverContent();
+
+                if (showMsg) {
+                    if (fallbackUsed) showToast('未设置有效地点，已默认使用北京时间');
+                    else showToast('已切换为' + (TIMEZONE_LABELS[tz] || tz));
+                }
+                return true;
+            }
+
+            /* 切换时间偏好 */
+            function setTimePreference(mode) {
+                if (mode !== 'system' && mode !== 'network') return;
+                prefs.timePreference = mode;
+                savePrefs();
+
+                if (mode === 'network') {
+                    syncNetworkTime(true);
+                } else {
+                    networkTimeState = { timeZone: null, valid: false, fallback: false, lastSync: 0 };
+                    updateTimePreferenceUI();
+                    updateDateTime();
+                    updateTimeScreensaverContent();
+                    showToast('已切换为「同步系统时间」');
+                }
+            }
+
+            /* 刷新设置面板上的 UI */
+            function updateTimePreferenceUI() {
+                document.querySelectorAll('#timePreferenceGroup .theme-btn').forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.timePref === prefs.timePreference);
+                });
+                const row  = document.getElementById('networkTimeInfoRow');
+                const info = document.getElementById('networkTimeZoneInfo');
+                const desc = document.getElementById('timePreferenceDesc');
+                if (!row || !info) return;
+
+                if (prefs.timePreference === 'network') {
+                    row.style.display = '';
+                    if (networkTimeState.valid && networkTimeState.timeZone) {
+                        const tz = networkTimeState.timeZone;
+                        const offMin = getTimeZoneOffsetMinutes(tz, new Date());
+                        const label = TIMEZONE_LABELS[tz] || tz;
+                        info.textContent = `${label}（${tz}） · ${formatOffset(offMin)}` +
+                            (networkTimeState.fallback ? ' · 未匹配地点，已回退' : '');
+                        if (desc) desc.textContent = '按设置地点自动匹配时区并显示当地时间';
+                    } else {
+                        info.textContent = '尚未获取到时区信息';
+                    }
+                } else {
+                    row.style.display = 'none';
+                    if (desc) desc.textContent = '当前使用本机系统时间';
+                }
+            }
+
             function updateDateTime() {
-                const now = new Date();
+                const now = getDisplayDate();
                 const hh = now.getHours().toString().padStart(2, '0');
                 const mm = now.getMinutes().toString().padStart(2, '0');
                 const ss = now.getSeconds().toString().padStart(2, '0');
@@ -5282,6 +5533,10 @@
                 prefs.keepAwake = false;
                 if (keepAwakeToggle) keepAwakeToggle.classList.remove('active');
                 releaseWakeLock();
+
+                prefs.timePreference = 'system';
+                networkTimeState = { timeZone: null, valid: false, fallback: false, lastSync: 0 };
+                try { updateTimePreferenceUI(); } catch (e) {}
 
                 updateDateTime();
                 savePrefs();
@@ -5990,7 +6245,7 @@
                 if (!el) return;
                 if (el.children.length !== 8) initTimeScreensaverChars();
 
-                const now = new Date();
+                const now = getDisplayDate();
                 const hh = String(now.getHours()).padStart(2, '0');
                 const mm = String(now.getMinutes()).padStart(2, '0');
                 const ss = String(now.getSeconds()).padStart(2, '0');
@@ -6429,13 +6684,27 @@
             openTaskViewBtn.addEventListener('click', () => openTaskPanel());
             closeTaskPanelBtn.addEventListener('click', closeTaskPanel);
 
-            document.querySelectorAll('.theme-btn').forEach(btn => {
+            document.querySelectorAll('.theme-btn[data-theme]').forEach(btn => {
                 btn.addEventListener('click', () => {
                     prefs.themeMode = btn.dataset.theme;
                     applyThemeFromPref();
                     savePrefs();
                 });
             });
+
+            /* 时间偏好按钮 */
+            document.querySelectorAll('#timePreferenceGroup .theme-btn').forEach(btn => {
+                btn.addEventListener('click', () => setTimePreference(btn.dataset.timePref));
+            });
+
+            /* 重新获取网络时间按钮 */
+            const refreshNetworkTimeBtn = document.getElementById('refreshNetworkTimeBtn');
+            if (refreshNetworkTimeBtn) {
+                refreshNetworkTimeBtn.addEventListener('click', () => {
+                    if (prefs.timePreference !== 'network') return;
+                    syncNetworkTime(true);
+                });
+            }
 
             positionGrid.addEventListener('click', (e) => {
                 const btn = e.target.closest('.position-btn');
@@ -6559,6 +6828,12 @@
 
             try { setInterval(updateDateTime, 1000); } catch (e) {}
             try { setInterval(() => { if (prefs.themeMode === 'auto') applyThemeFromPref(); }, 60000); } catch (e) {}
+            /* 网络时间模式下定期刷新时差（含夏令时切换） */
+            try {
+                setInterval(() => {
+                    if (prefs.timePreference === 'network') updateTimePreferenceUI();
+                }, 60000);
+            } catch (e) {}
 
             window.addEventListener('beforeunload', () => {
                 try { taskItems.forEach(task => revokeTaskBlobURL(task)); } catch (e) {}
@@ -6582,6 +6857,7 @@
                 ' | 息屏时间显示: ' + (prefs.screenSaverTimeEnabled ? 'ON' : 'OFF') +
                 ' | 一直息屏: ' + (prefs.screenSaverAlwaysOn ? 'ON' : 'OFF') +
                 ' | 阻止系统睡眠: ' + (prefs.keepAwake ? 'ON' : 'OFF') +
+                ' | 时间偏好: ' + (prefs.timePreference === 'network' ? ('网络时间(' + (networkTimeState.timeZone || '-') + ')') : '系统时间') +
                 (wakeLockSupported ? '' : ' (Wake Lock 不支持)') +
                 ' | PWA: ' + (isStandaloneMode ? '已安装模式' : '浏览器模式'));
         })();
