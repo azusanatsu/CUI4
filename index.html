@@ -2060,7 +2060,6 @@
 
         /* ============================================================
          * 息屏时间显示
-         * 字号随主内容大小联动（body.size-*）
          * 数字使用固定宽度 span，避免切换时左右移动
          * ============================================================ */
         .time-screensaver {
@@ -2104,11 +2103,9 @@
         }
         .ts-time .ts-ch { width: 0.62em; }
         .ts-time .ts-sep { width: 0.34em; }
-        /* 主内容大小联动（大） */
         body.size-large .ts-time {
             font-size: clamp(6rem, 24vw, 26rem);
         }
-        /* 主内容大小联动（小） */
         body.size-small .ts-time {
             font-size: clamp(4rem, 16vw, 18rem);
         }
@@ -2648,6 +2645,8 @@
          *                 + 息屏时间数字固定宽度
          *                 + 设置分类（系统 / 个性化 / 其他）+ 返回键
          *                 + 搜索成功后清空搜索栏并写入地址栏
+         *                 + ESC 键在设置内：子页面返回上一级，根页面关闭设置
+         *                   面板关闭后 ESC 恢复原本作用（不拦截）
          * ================================================================ */
         (function() {
             'use strict';
@@ -3825,16 +3824,36 @@
             }
 
             /* ============================================================
-             * 设置分类视图
+             * 设置分类视图（支持多级返回栈，目前只有一层）
              * ============================================================ */
+            const settingsViewParents = {
+                'root': null,
+                'system': 'root',
+                'personalization': 'root',
+                'other': 'root'
+            };
+            let currentSettingsView = 'root';
+
             function showSettingsView(name) {
                 try {
+                    if (!Object.prototype.hasOwnProperty.call(settingsViewParents, name)) name = 'root';
+                    currentSettingsView = name;
                     document.querySelectorAll('.settings-view').forEach(v => {
                         v.classList.toggle('active', v.dataset.view === name);
                     });
                     if (settingsBackBtn) settingsBackBtn.classList.toggle('show', name !== 'root');
                     if (settingsScroll) settingsScroll.scrollTop = 0;
                 } catch (e) { console.warn('切换设置视图失败', e); }
+            }
+
+            /* 返回上一级设置视图；若已在根视图返回 false */
+            function goBackSettingsView() {
+                const parent = settingsViewParents[currentSettingsView];
+                if (parent) {
+                    showSettingsView(parent);
+                    return true;
+                }
+                return false;
             }
 
             document.querySelectorAll('.settings-nav-btn').forEach(btn => {
@@ -3848,7 +3867,7 @@
             if (settingsBackBtn) {
                 settingsBackBtn.addEventListener('click', function(e) {
                     e.stopPropagation();
-                    showSettingsView('root');
+                    goBackSettingsView();
                 });
             }
 
@@ -6213,6 +6232,22 @@
              * 全局键盘快捷键
              * ============================================================ */
             document.addEventListener('keydown', function(e) {
+                /* -------- 设置面板 ESC 优先处理（在输入框检测之前） --------
+                 * 设置面板打开时：
+                 *   · 有父级（子页面） → 返回上一级设置视图（消费事件）
+                 *   · 已在根视图     → 关闭设置面板（消费事件）
+                 * 设置面板未打开时：不消费 ESC，让其恢复原本作用
+                 */
+                if (e.key === 'Escape' && settingsPanel.classList.contains('open')) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const wentBack = goBackSettingsView();
+                    if (!wentBack) {
+                        closeSettings();
+                    }
+                    return;
+                }
+
                 if (isInputFocused()) {
                     cancelShiftAction();
                     return;
