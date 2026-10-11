@@ -28,7 +28,6 @@
             font-weight: normal;
             font-style: normal;
             font-display: swap;
-            /* ! "  |  '  |  * + , -  |  / 0-9 : ;  |  =  |  A-Z  |  [  |  ]  |  a-z */
             unicode-range:
                 U+0021-0022,
                 U+0027,
@@ -163,7 +162,6 @@
         }
         .boot-title {
             font-size: 5.5rem;
-            /* 使用 TFont 并强制最粗的合成粗细（原 800 → 900） */
             font-weight: 900;
             font-family: 'TFont', 'Segoe UI', 'Microsoft YaHei', monospace;
             font-synthesis: weight;
@@ -845,6 +843,7 @@
             align-items: center;
             padding: 24px 24px 12px;
             border-bottom: 1px solid var(--setting-border);
+            flex-shrink: 0;
         }
         .settings-header h2 { font-weight: 600; font-size: 1.6rem; }
         .countdown-badge {
@@ -864,6 +863,104 @@
             color: var(--text-secondary);
         }
         .settings-scroll { flex: 1; overflow-y: auto; padding: 20px 24px 32px; }
+
+        /* ---------- 设置分类导航按钮 ---------- */
+        .settings-nav-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 32px;
+        }
+        .settings-nav-btn {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 15px 18px;
+            background: var(--card-glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.2s, box-shadow 0.2s;
+            text-align: left;
+            box-shadow: var(--shadow-sm);
+        }
+        .settings-nav-btn:hover {
+            background: rgba(74, 111, 165, 0.2);
+            transform: translateY(-1px);
+        }
+        .settings-nav-btn:active { transform: scale(0.985); }
+        .settings-nav-btn > i:first-child {
+            font-size: 1.1rem;
+            color: var(--tabs-active);
+            width: 24px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+        .settings-nav-btn > span {
+            flex: 1;
+            font-size: 1rem;
+        }
+        .settings-nav-btn > i:last-child {
+            font-size: 0.8rem;
+            opacity: 0.45;
+            flex-shrink: 0;
+        }
+
+        /* ---------- 设置视图（子页面） ---------- */
+        .settings-view { display: none; }
+        .settings-view.active {
+            display: block;
+            animation: settingsViewIn 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+        }
+        @keyframes settingsViewIn {
+            from { opacity: 0; transform: translateX(18px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        /* ---------- 设置返回键（设置外突出） ---------- */
+        .settings-back-btn {
+            position: absolute;
+            top: 50%;
+            left: -26px;
+            transform: translateY(-50%);
+            width: 56px;
+            height: 56px;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid var(--setting-border);
+            border-right: none;
+            border-radius: 16px 0 0 16px;
+            background: var(--setting-panel-bg);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            color: var(--text-secondary);
+            font-size: 1.15rem;
+            cursor: pointer;
+            z-index: 5;
+            box-shadow: -8px 0 20px rgba(0, 0, 0, 0.14);
+            padding: 0;
+            line-height: 1;
+        }
+        .settings-back-btn.show {
+            display: flex;
+            animation: backBtnIn 0.35s cubic-bezier(0.23, 1, 0.32, 1);
+        }
+        @keyframes backBtnIn {
+            from { opacity: 0; transform: translate(16px, -50%); }
+            to { opacity: 1; transform: translate(0, -50%); }
+        }
+        .settings-back-btn:hover {
+            background: rgba(74, 111, 165, 0.25);
+            color: var(--tabs-active);
+        }
+        .settings-back-btn:active { transform: translateY(-50%) scale(0.94); }
+
         .settings-category { margin-bottom: 32px; }
         .category-title {
             font-size: 1.2rem;
@@ -1669,6 +1766,17 @@
                 height: 40px;
                 font-size: 18px;
             }
+            /* 移动端返回键：位于面板内部 */
+            .settings-back-btn {
+                left: 12px;
+                top: 76px;
+                transform: none;
+                border-radius: 12px;
+                border-right: 1px solid var(--setting-border);
+                box-shadow: var(--shadow-sm);
+            }
+            .settings-back-btn.show { animation: none; }
+            .settings-back-btn:active { transform: scale(0.94); }
         }
 
         @keyframes fadeUp {
@@ -1986,7 +2094,6 @@
             align-items: center;
             justify-content: center;
         }
-        /* 每个数字固定宽度，冒号稍窄，整体宽度恒定，居中不漂移 */
         .ts-time .ts-ch,
         .ts-time .ts-sep {
             display: inline-block;
@@ -1995,12 +2102,8 @@
             font-feature-settings: "tnum" 1;
             font-variant-ligatures: none;
         }
-        .ts-time .ts-ch {
-            width: 0.62em;
-        }
-        .ts-time .ts-sep {
-            width: 0.34em;
-        }
+        .ts-time .ts-ch { width: 0.62em; }
+        .ts-time .ts-sep { width: 0.34em; }
         /* 主内容大小联动（大） */
         body.size-large .ts-time {
             font-size: clamp(6rem, 24vw, 26rem);
@@ -2012,7 +2115,6 @@
 
         /* ============================================================
          * 息屏闹钟显示（叠加在时间屏之上，z-index 更高）
-         * 字号随主内容大小联动（body.size-*）
          * ============================================================ */
         .alarm-screensaver {
             position: fixed;
@@ -2080,11 +2182,9 @@
             text-align: center;
             transition: font-size 0.4s ease;
         }
-        /* 主内容大小联动（大） */
         body.size-large .as-countdown {
             font-size: clamp(5rem, 19vw, 22rem);
         }
-        /* 主内容大小联动（小） */
         body.size-small .as-countdown {
             font-size: clamp(3rem, 13vw, 15rem);
         }
@@ -2135,7 +2235,6 @@
             .as-btn { padding: 12px 20px; font-size: 0.9rem; }
             .ts-time { font-size: clamp(3rem, 22vw, 9rem); letter-spacing: 0; }
 
-            /* 移动端：息屏字号大小联动覆盖 */
             body.size-large .ts-time {
                 font-size: clamp(3.5rem, 25vw, 10.5rem);
             }
@@ -2262,146 +2361,217 @@
         </div>
     </div>
 
+    <!-- ================= 设置面板 ================= -->
     <div class="settings-panel" id="settingsPanel">
         <div class="settings-header">
             <h2>CUI4 · 极简设置 <span id="settingsCountdown" class="countdown-badge">8s</span></h2>
             <button class="close-panel" id="closeSettingsBtn"><i class="fas fa-times"></i></button>
         </div>
-        <div class="settings-scroll">
-            <div class="settings-category">
-                <div class="category-title"><i class="fas fa-brain"></i> AI 调度</div>
-                <div class="setting-row">
-                    <div class="setting-info"><span class="setting-label">启用 AI 调度</span><div class="setting-desc">开启后强制靠左 + 默认比例（忽略布局设置）</div></div>
-                    <div class="setting-control"><div id="aiModeToggle" class="toggle-switch"></div></div>
+
+        <!-- 设置外突出返回键（仅子页面显示） -->
+        <button class="settings-back-btn" id="settingsBackBtn" type="button" title="返回上一级">
+            <i class="fas fa-arrow-left"></i>
+        </button>
+
+        <div class="settings-scroll" id="settingsScroll">
+
+            <!-- ==================== 根视图 ==================== -->
+            <div class="settings-view active" data-view="root">
+                <div class="settings-category">
+                    <div class="category-title"><i class="fas fa-brain"></i> AI 调度</div>
+                    <div class="setting-row">
+                        <div class="setting-info"><span class="setting-label">启用 AI 调度</span><div class="setting-desc">开启后强制靠左 + 默认比例（忽略布局设置）</div></div>
+                        <div class="setting-control"><div id="aiModeToggle" class="toggle-switch"></div></div>
+                    </div>
+                </div>
+
+                <!-- 分类入口（全长可点击按钮） -->
+                <div class="settings-nav-group">
+                    <button class="settings-nav-btn" type="button" data-nav="system">
+                        <i class="fas fa-sliders-h"></i>
+                        <span>系统</span>
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                    <button class="settings-nav-btn" type="button" data-nav="personalization">
+                        <i class="fas fa-magic"></i>
+                        <span>个性化</span>
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                    <button class="settings-nav-btn" type="button" data-nav="other">
+                        <i class="fas fa-ellipsis-h"></i>
+                        <span>其他</span>
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
+
+                <div class="settings-category">
+                    <div class="category-title"><i class="fas fa-cubes"></i> 功能栏</div>
+                    <div class="setting-row">
+                        <div class="setting-info"><span class="setting-label">打开功能栏</span><div class="setting-desc">倒计时 · 秒表 · 计算器 · Advance（↑ 方向键快捷开启/关闭）</div></div>
+                        <div class="setting-control"><button id="openFuncPanelBtn" class="file-label" style="background:var(--tabs-active);"><i class="fas fa-arrow-up"></i> 展开</button></div>
+                    </div>
+                </div>
+
+                <div class="settings-category">
+                    <div class="category-title"><i class="fas fa-bell"></i> 闹钟</div>
+                    <div class="setting-row">
+                        <div class="setting-info"><span class="setting-label">CUI4内置闹钟</span><div class="setting-desc">公开测试版 · 最多24个闹钟（↓ 方向键快捷开启/关闭）</div></div>
+                        <div class="setting-control"><button id="openAlarmPanelBtn" class="file-label" style="background:var(--tabs-active);"><i class="fas fa-clock"></i> 打开闹钟</button></div>
+                    </div>
                 </div>
             </div>
-            <div class="settings-category">
-                <div class="category-title"><i class="fas fa-arrows-alt"></i> 界面布局</div>
-                <div class="setting-row">
-                    <div class="setting-info"><span class="setting-label">内容位置</span><div class="setting-desc">调整主内容在屏幕中的位置（AI调度时强制靠左）</div></div>
+
+            <!-- ==================== 系统 ==================== -->
+            <div class="settings-view" data-view="system">
+                <div class="settings-category">
+                    <div class="category-title"><i class="fas fa-user"></i> 用户名称</div>
+                    <div class="setting-row">
+                        <div class="setting-info"><span class="setting-label">显示名称</span><div class="setting-desc">更改主页问候语中的名字</div></div>
+                        <div class="setting-control"><input type="text" id="usernameInput" placeholder="CUI4 USER" maxlength="20"></div>
+                    </div>
                 </div>
-                <div class="position-grid" id="positionGrid">
-                    <div class="position-btn" data-pos="topleft"><span class="pos-dot"></span></div>
-                    <div class="position-btn" data-pos="top"><span class="pos-dot"></span></div>
-                    <div class="position-btn" data-pos="topright"><span class="pos-dot"></span></div>
-                    <div class="position-btn" data-pos="left"><span class="pos-dot"></span></div>
-                    <div class="position-btn active" data-pos="center"><span class="pos-dot"></span></div>
-                    <div class="position-btn" data-pos="right"><span class="pos-dot"></span></div>
-                    <div class="position-btn" data-pos="bottomleft"><span class="pos-dot"></span></div>
-                    <div class="position-btn" data-pos="bottom"><span class="pos-dot"></span></div>
-                    <div class="position-btn" data-pos="bottomright"><span class="pos-dot"></span></div>
+
+                <div class="settings-category">
+                    <div class="category-title"><i class="fas fa-sun"></i> 显示亮度</div>
+                    <div class="setting-row">
+                        <div class="setting-info"><span class="setting-label">屏幕亮度</span><div class="setting-desc">模拟亮度遮罩</div></div>
+                        <div class="setting-control"><input type="range" id="brightnessSlider" min="20" max="100" value="100"></div>
+                    </div>
                 </div>
-                <div class="setting-row">
-                    <div class="setting-info"><span class="setting-label">内容比例</span><div class="setting-desc">调整主内容的显示大小（AI调度时强制默认；息屏显示字号同步）</div></div>
-                    <div class="setting-control">
-                        <div class="size-buttons" id="sizeButtons">
-                            <button class="size-btn" data-size="large">大</button>
-                            <button class="size-btn active" data-size="default">默认</button>
-                            <button class="size-btn" data-size="small">小</button>
+
+                <div class="settings-category">
+                    <div class="category-title"><i class="fas fa-volume-up"></i> 声音音量</div>
+                    <div class="setting-row">
+                        <div class="setting-info"><span class="setting-label">系统音量</span><div class="setting-desc">调节后延迟播放反馈音</div></div>
+                        <div class="setting-control"><input type="range" id="volumeSlider" min="0" max="100" value="33"></div>
+                    </div>
+                    <div class="setting-row">
+                        <div class="setting-info"><span class="setting-label">提醒声</span><div class="setting-desc">整点提醒 / 反馈声 / 倒计时完成，均使用此声音（前2.5秒，单次播放）</div></div>
+                        <div class="setting-control" style="gap:8px;">
+                            <label class="file-label" id="soundUploadLabel"><i class="fas fa-music"></i> 更换<input type="file" id="soundUpload" accept="audio/*" style="display:none"></label>
+                            <button id="resetSoundBtn" class="file-label" style="background:#6c757d;">恢复默认</button>
                         </div>
                     </div>
                 </div>
-            </div>
-            <div class="settings-category">
-                <div class="category-title"><i class="fas fa-palette"></i> 主题模式</div>
-                <div class="setting-row">
-                    <div class="setting-info"><span class="setting-label">外观方案</span><div class="setting-desc">日间/夜间/跟随时间自动切换</div></div>
-                    <div class="setting-control theme-buttons" id="themeSelectGroup">
-                        <span data-theme="light" class="theme-btn">日间</span>
-                        <span data-theme="dark" class="theme-btn">夜间</span>
-                        <span data-theme="auto" class="theme-btn">跟随时间</span>
+
+                <div class="settings-category">
+                    <div class="category-title"><i class="fas fa-map-marker-alt"></i> 地区与天气</div>
+                    <div class="setting-row">
+                        <div class="setting-info"><span class="setting-label">地理位置</span><div class="setting-desc">国家/省/城市 三级联动</div></div>
+                        <div class="setting-control location-select-group">
+                            <select id="countrySelect"></select>
+                            <select id="stateSelect"></select>
+                            <select id="citySelect"></select>
+                        </div>
+                    </div>
+                    <div class="setting-row">
+                        <div class="setting-info"></div>
+                        <div class="setting-control"><button id="applyLocationBtn" class="file-label">应用并更新天气</button></div>
+                    </div>
+                </div>
+
+                <div class="settings-category">
+                    <div class="category-title"><i class="fas fa-plug"></i> 阻止系统睡眠</div>
+                    <div class="setting-row">
+                        <div class="setting-info"><span class="setting-label">阻止系统睡眠</span><div class="setting-desc">开启后屏幕保持常亮，系统不会自动息屏/休眠（需浏览器支持 Wake Lock）</div></div>
+                        <div class="setting-control"><div id="keepAwakeToggle" class="toggle-switch"></div></div>
                     </div>
                 </div>
             </div>
-            <div class="settings-category">
-                <div class="category-title"><i class="fas fa-user"></i> 用户名称</div>
-                <div class="setting-row">
-                    <div class="setting-info"><span class="setting-label">显示名称</span><div class="setting-desc">更改主页问候语中的名字</div></div>
-                    <div class="setting-control"><input type="text" id="usernameInput" placeholder="CUI4 USER" maxlength="20"></div>
+
+            <!-- ==================== 个性化 ==================== -->
+            <div class="settings-view" data-view="personalization">
+                <div class="settings-category">
+                    <div class="category-title"><i class="fas fa-arrows-alt"></i> 界面布局</div>
+                    <div class="setting-row">
+                        <div class="setting-info"><span class="setting-label">内容位置</span><div class="setting-desc">调整主内容在屏幕中的位置（AI调度时强制靠左）</div></div>
+                    </div>
+                    <div class="position-grid" id="positionGrid">
+                        <div class="position-btn" data-pos="topleft"><span class="pos-dot"></span></div>
+                        <div class="position-btn" data-pos="top"><span class="pos-dot"></span></div>
+                        <div class="position-btn" data-pos="topright"><span class="pos-dot"></span></div>
+                        <div class="position-btn" data-pos="left"><span class="pos-dot"></span></div>
+                        <div class="position-btn active" data-pos="center"><span class="pos-dot"></span></div>
+                        <div class="position-btn" data-pos="right"><span class="pos-dot"></span></div>
+                        <div class="position-btn" data-pos="bottomleft"><span class="pos-dot"></span></div>
+                        <div class="position-btn" data-pos="bottom"><span class="pos-dot"></span></div>
+                        <div class="position-btn" data-pos="bottomright"><span class="pos-dot"></span></div>
+                    </div>
+                    <div class="setting-row">
+                        <div class="setting-info"><span class="setting-label">内容比例</span><div class="setting-desc">调整主内容的显示大小（AI调度时强制默认；息屏显示字号同步）</div></div>
+                        <div class="setting-control">
+                            <div class="size-buttons" id="sizeButtons">
+                                <button class="size-btn" data-size="large">大</button>
+                                <button class="size-btn active" data-size="default">默认</button>
+                                <button class="size-btn" data-size="small">小</button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-            </div>
-            <div class="settings-category">
-                <div class="category-title"><i class="fas fa-image"></i> 壁纸 & 个性化</div>
-                <div class="setting-row"><div class="setting-info"><span class="setting-label">更改壁纸</span><div class="setting-desc">支持 .jpg, .png, .mp4 (视频壁纸刷新后保留)</div></div><div class="setting-control"><label class="file-label" id="wallpaperLabel"><i class="fas fa-upload"></i> 选择文件<input type="file" id="wallpaperUpload" accept="image/jpeg,image/png,video/mp4" style="display:none"></label></div></div>
-                <div class="setting-row"><div class="setting-info"><span class="setting-label">壁纸声音</span><div class="setting-desc">仅当使用视频壁纸时有效</div></div><div class="setting-control"><div id="wallpaperSoundToggle" class="toggle-switch"></div></div></div>
-                <div class="setting-row"><div class="setting-info"><span class="setting-label">重置默认壁纸</span><div class="setting-desc">恢复 CUI4 经典风格</div></div><div class="setting-control"><button id="resetWallpaperBtn" class="file-label" style="background:#6c757d;">重置默认</button></div></div>
-            </div>
-            <div class="settings-category">
-                <div class="category-title"><i class="fas fa-folder-open"></i> 文件管理</div>
-                <div class="setting-row">
-                    <div class="setting-info"><span class="setting-label">导入文件</span><div class="setting-desc">支持图片、视频、文本等，显示在左侧任务视图</div></div>
-                    <div class="setting-control">
-                        <label class="file-label" id="fileImportLabel"><i class="fas fa-file-import"></i> 选择文件<input type="file" id="globalFileImport" style="display:none" multiple></label>
-                        <button id="openTaskViewBtn" class="file-label" style="background: var(--accent-grey);"><i class="fas fa-tasks"></i> 任务视图</button>
+
+                <div class="settings-category">
+                    <div class="category-title"><i class="fas fa-palette"></i> 主题模式</div>
+                    <div class="setting-row">
+                        <div class="setting-info"><span class="setting-label">外观方案</span><div class="setting-desc">日间/夜间/跟随时间自动切换</div></div>
+                        <div class="setting-control theme-buttons" id="themeSelectGroup">
+                            <span data-theme="light" class="theme-btn">日间</span>
+                            <span data-theme="dark" class="theme-btn">夜间</span>
+                            <span data-theme="auto" class="theme-btn">跟随时间</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-category">
+                    <div class="category-title"><i class="fas fa-image"></i> 壁纸 &amp; 个性化</div>
+                    <div class="setting-row">
+                        <div class="setting-info"><span class="setting-label">更改壁纸</span><div class="setting-desc">支持 .jpg, .png, .mp4 (视频壁纸刷新后保留)</div></div>
+                        <div class="setting-control"><label class="file-label" id="wallpaperLabel"><i class="fas fa-upload"></i> 选择文件<input type="file" id="wallpaperUpload" accept="image/jpeg,image/png,video/mp4" style="display:none"></label></div>
+                    </div>
+                    <div class="setting-row">
+                        <div class="setting-info"><span class="setting-label">壁纸声音</span><div class="setting-desc">仅当使用视频壁纸时有效</div></div>
+                        <div class="setting-control"><div id="wallpaperSoundToggle" class="toggle-switch"></div></div>
+                    </div>
+                    <div class="setting-row">
+                        <div class="setting-info"><span class="setting-label">重置默认壁纸</span><div class="setting-desc">恢复 CUI4 经典风格</div></div>
+                        <div class="setting-control"><button id="resetWallpaperBtn" class="file-label" style="background:#6c757d;">重置默认</button></div>
                     </div>
                 </div>
             </div>
-            <div class="settings-category">
-                <div class="category-title"><i class="fas fa-history"></i> 历史记录</div>
-                <div class="setting-row">
-                    <div class="setting-info"><span class="setting-label">清除全部历史</span><div class="setting-desc">删除所有搜索历史记录</div></div>
-                    <div class="setting-control"><button id="clearAllHistoryBtn" class="file-label" style="background:#ff6b6b;">清除全部</button></div>
+
+            <!-- ==================== 其他 ==================== -->
+            <div class="settings-view" data-view="other">
+                <div class="settings-category">
+                    <div class="category-title"><i class="fas fa-folder-open"></i> 文件管理</div>
+                    <div class="setting-row">
+                        <div class="setting-info"><span class="setting-label">导入文件</span><div class="setting-desc">支持图片、视频、文本等，显示在左侧任务视图</div></div>
+                        <div class="setting-control">
+                            <label class="file-label" id="fileImportLabel"><i class="fas fa-file-import"></i> 选择文件<input type="file" id="globalFileImport" style="display:none" multiple></label>
+                            <button id="openTaskViewBtn" class="file-label" style="background: var(--accent-grey);"><i class="fas fa-tasks"></i> 任务视图</button>
+                        </div>
+                    </div>
                 </div>
-            </div>
-            <div class="settings-category">
-                <div class="category-title"><i class="fas fa-sun"></i> 显示亮度</div>
-                <div class="setting-row"><div class="setting-info"><span class="setting-label">屏幕亮度</span><div class="setting-desc">模拟亮度遮罩</div></div><div class="setting-control"><input type="range" id="brightnessSlider" min="20" max="100" value="100"></div></div>
-            </div>
-            <div class="settings-category">
-                <div class="category-title"><i class="fas fa-volume-up"></i> 声音音量</div>
-                <div class="setting-row">
-                    <div class="setting-info"><span class="setting-label">系统音量</span><div class="setting-desc">调节后延迟播放反馈音</div></div>
-                    <div class="setting-control"><input type="range" id="volumeSlider" min="0" max="100" value="33"></div>
+
+                <div class="settings-category">
+                    <div class="category-title"><i class="fas fa-history"></i> 历史记录</div>
+                    <div class="setting-row">
+                        <div class="setting-info"><span class="setting-label">清除全部历史</span><div class="setting-desc">删除所有搜索历史记录</div></div>
+                        <div class="setting-control"><button id="clearAllHistoryBtn" class="file-label" style="background:#ff6b6b;">清除全部</button></div>
+                    </div>
                 </div>
-                <div class="setting-row">
-                    <div class="setting-info"><span class="setting-label">提醒声</span><div class="setting-desc">整点提醒 / 反馈声 / 倒计时完成，均使用此声音（前2.5秒，单次播放）</div></div>
-                    <div class="setting-control" style="gap:8px;">
-                        <label class="file-label" id="soundUploadLabel"><i class="fas fa-music"></i> 更换<input type="file" id="soundUpload" accept="audio/*" style="display:none"></label>
-                        <button id="resetSoundBtn" class="file-label" style="background:#6c757d;">恢复默认</button>
+
+                <div class="settings-category">
+                    <div class="category-title"><i class="fas fa-clock"></i> 息屏时间显示</div>
+                    <div class="setting-row">
+                        <div class="setting-info"><span class="setting-label">息屏时间显示</span><div class="setting-desc">10秒无操作后循环息屏显示当前时间（与闹钟可轮播，时间优先）</div></div>
+                        <div class="setting-control"><div id="screenSaverTimeToggle" class="toggle-switch"></div></div>
+                    </div>
+                    <div class="setting-row">
+                        <div class="setting-info"><span class="setting-label">一直息屏时间显示</span><div class="setting-desc">开启后10秒无操作进入永久息屏（时间屏常驻，闹钟屏每3秒叠加3秒循环），任意操作退出</div></div>
+                        <div class="setting-control"><div id="screenSaverAlwaysOnToggle" class="toggle-switch"></div></div>
                     </div>
                 </div>
             </div>
-            <div class="settings-category">
-                <div class="category-title"><i class="fas fa-map-marker-alt"></i> 地区与天气</div>
-                <div class="setting-row">
-                    <div class="setting-info"><span class="setting-label">地理位置</span><div class="setting-desc">国家/省/城市 三级联动</div></div>
-                    <div class="setting-control location-select-group">
-                        <select id="countrySelect"></select>
-                        <select id="stateSelect"></select>
-                        <select id="citySelect"></select>
-                    </div>
-                </div>
-                <div class="setting-row"><div class="setting-info"></div><div class="setting-control"><button id="applyLocationBtn" class="file-label">应用并更新天气</button></div></div>
-            </div>
-            <div class="settings-category">
-                <div class="category-title"><i class="fas fa-cubes"></i> 功能栏</div>
-                <div class="setting-row">
-                    <div class="setting-info"><span class="setting-label">打开功能栏</span><div class="setting-desc">倒计时 · 秒表 · 计算器 · Advance（↑ 方向键快捷开启/关闭）</div></div>
-                    <div class="setting-control"><button id="openFuncPanelBtn" class="file-label" style="background:var(--tabs-active);"><i class="fas fa-arrow-up"></i> 展开</button></div>
-                </div>
-            </div>
-            <div class="settings-category">
-                <div class="category-title"><i class="fas fa-bell"></i> 闹钟</div>
-                <div class="setting-row">
-                    <div class="setting-info"><span class="setting-label">CUI4内置闹钟</span><div class="setting-desc">公开测试版 · 最多24个闹钟（↓ 方向键快捷开启/关闭）</div></div>
-                    <div class="setting-control"><button id="openAlarmPanelBtn" class="file-label" style="background:var(--tabs-active);"><i class="fas fa-clock"></i> 打开闹钟</button></div>
-                </div>
-                <div class="setting-row">
-                    <div class="setting-info"><span class="setting-label">息屏时间显示</span><div class="setting-desc">10秒无操作后循环息屏显示当前时间（与闹钟可轮播，时间优先）</div></div>
-                    <div class="setting-control"><div id="screenSaverTimeToggle" class="toggle-switch"></div></div>
-                </div>
-                <div class="setting-row">
-                    <div class="setting-info"><span class="setting-label">一直息屏时间显示</span><div class="setting-desc">开启后10秒无操作进入永久息屏（时间屏常驻，闹钟屏每3秒叠加3秒循环），任意操作退出</div></div>
-                    <div class="setting-control"><div id="screenSaverAlwaysOnToggle" class="toggle-switch"></div></div>
-                </div>
-            </div>
-            <div class="settings-category">
-                <div class="category-title"><i class="fas fa-plug"></i> 系统电源</div>
-                <div class="setting-row">
-                    <div class="setting-info"><span class="setting-label">阻止系统睡眠</span><div class="setting-desc">开启后屏幕保持常亮，系统不会自动息屏/休眠（需浏览器支持 Wake Lock）</div></div>
-                    <div class="setting-control"><div id="keepAwakeToggle" class="toggle-switch"></div></div>
-                </div>
-            </div>
+
         </div>
     </div>
 
@@ -2474,9 +2644,10 @@
 
     <script>
         /* ================================================================
-         * CUI4 主脚本 — 第12次修改 + PWA 化 + 一直息屏 + 字号联动
-         *                 + 阻止系统睡眠（Wake Lock）
-         *                 + 息屏时间数字固定宽度（避免跳动）
+         * CUI4 主脚本 — PWA 化 + 一直息屏 + 阻止系统睡眠
+         *                 + 息屏时间数字固定宽度
+         *                 + 设置分类（系统 / 个性化 / 其他）+ 返回键
+         *                 + 搜索成功后清空搜索栏并写入地址栏
          * ================================================================ */
         (function() {
             'use strict';
@@ -2864,6 +3035,8 @@
             const historyPanel = document.getElementById('historyPanel');
             const settingsTrigger = document.getElementById('settingsTrigger');
             const settingsPanel = document.getElementById('settingsPanel');
+            const settingsScroll = document.getElementById('settingsScroll');
+            const settingsBackBtn = document.getElementById('settingsBackBtn');
             const animGear = document.getElementById('animGear');
             const closeSettingsBtn = document.getElementById('closeSettingsBtn');
             const brightnessSlider = document.getElementById('brightnessSlider');
@@ -3286,7 +3459,6 @@
                 if (!VALID_SIZES.includes(size)) size = 'default';
                 SIZE_CLASSES.forEach(c => mainContent.classList.remove(c));
                 mainContent.classList.add('size-' + size);
-                /* 同步到 body，供息屏时间/闹钟显示联动字号 */
                 document.body.classList.remove('size-large', 'size-default', 'size-small');
                 document.body.classList.add('size-' + size);
             }
@@ -3319,7 +3491,6 @@
                 savePrefs();
             }
 
-            /* 步进调整内容比例（Ctrl + "+" / "-"） */
             const SIZE_ORDER = ['small', 'default', 'large'];
             const SIZE_LABEL = { small: '小', default: '默认', large: '大' };
             function stepContentSize(dir) {
@@ -3632,14 +3803,12 @@
                 }
             }
 
-            /* 页面重新可见时恢复 Wake Lock（浏览器会在隐藏时自动释放） */
             document.addEventListener('visibilitychange', function () {
                 if (document.visibilityState === 'visible' && prefs.keepAwake) {
                     requestWakeLock(true);
                 }
             });
 
-            /* 用户首次交互时补一次请求（部分浏览器要求用户激活） */
             ['click', 'keydown', 'touchstart'].forEach(function (ev) {
                 document.addEventListener(ev, function onceHandler() {
                     if (prefs.keepAwake) requestWakeLock(true);
@@ -3652,6 +3821,34 @@
             if (keepAwakeToggle) {
                 keepAwakeToggle.addEventListener('click', function () {
                     setKeepAwake(!prefs.keepAwake, false);
+                });
+            }
+
+            /* ============================================================
+             * 设置分类视图
+             * ============================================================ */
+            function showSettingsView(name) {
+                try {
+                    document.querySelectorAll('.settings-view').forEach(v => {
+                        v.classList.toggle('active', v.dataset.view === name);
+                    });
+                    if (settingsBackBtn) settingsBackBtn.classList.toggle('show', name !== 'root');
+                    if (settingsScroll) settingsScroll.scrollTop = 0;
+                } catch (e) { console.warn('切换设置视图失败', e); }
+            }
+
+            document.querySelectorAll('.settings-nav-btn').forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    const target = btn.dataset.nav;
+                    if (target) showSettingsView(target);
+                });
+            });
+
+            if (settingsBackBtn) {
+                settingsBackBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    showSettingsView('root');
                 });
             }
 
@@ -4452,6 +4649,7 @@
                         gear.style.removeProperty('animation');
                         settingsPanel.classList.add('open');
                         settingsCountdown.setPanelOpen(true);
+                        showSettingsView('root');
                         isAnimating = false;
                     }, 650);
                 }, 600);
@@ -4460,6 +4658,7 @@
             function closeSettings() {
                 settingsPanel.classList.remove('open');
                 settingsCountdown.setPanelOpen(false);
+                showSettingsView('root');
             }
 
             function openTaskPanel() {
@@ -4643,12 +4842,29 @@
                 renderSearchHistory();
             }
 
+            /* ---------- 搜索：成功跳转后清空搜索栏 + 写入地址栏 ---------- */
             function performSearch() {
                 let q = searchInput.value.trim();
                 if (!q) return;
                 addHistory(q);
+
                 let url = q.match(/^https?:\/\//) ? q : `https://www.bing.com/search?q=${encodeURIComponent(q)}`;
-                window.open(url, '_blank');
+
+                let openedWin = null;
+                try { openedWin = window.open(url, '_blank'); } catch (e) { openedWin = null; }
+
+                /* 认为跳转或搜索已成功触发：写入地址栏 + 清空搜索栏 */
+                const success = (openedWin !== null) || true; /* window.open 被拦截时也认为已尝试；如需严格可改为 openedWin !== null */
+                if (success) {
+                    try {
+                        history.replaceState(null, '', '#q=' + encodeURIComponent(q));
+                    } catch (e) {
+                        try { location.hash = 'q=' + encodeURIComponent(q); } catch (e2) {}
+                    }
+                    searchInput.value = '';
+                    try { searchInput.blur(); } catch (e) {}
+                    historyPanel.classList.remove('show');
+                }
             }
 
             function populateCountries() {
@@ -4793,7 +5009,6 @@
                     }
                 } catch (e) {}
 
-                /* 恢复「阻止系统睡眠」状态 */
                 try {
                     if (keepAwakeToggle) {
                         keepAwakeToggle.classList.toggle('active', !!prefs.keepAwake);
@@ -4839,7 +5054,6 @@
                 document.body.classList.toggle('dark', isDark);
                 document.querySelectorAll('.theme-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.theme === prefs.themeMode));
 
-                /* 同步 PWA 状态栏颜色 */
                 try {
                     const meta = document.querySelector('meta[name="theme-color"]');
                     if (meta) meta.setAttribute('content', isDark ? '#0f131c' : '#f5f7fe');
@@ -5046,7 +5260,6 @@
                 prefs.screenSaverAlwaysOn = false;
                 if (screenSaverAlwaysOnToggle) screenSaverAlwaysOnToggle.classList.remove('active');
 
-                /* 重置「阻止系统睡眠」 */
                 prefs.keepAwake = false;
                 if (keepAwakeToggle) keepAwakeToggle.classList.remove('active');
                 releaseWakeLock();
@@ -5083,7 +5296,6 @@
             let timeScreensaverUpdateTimer = null;
             let screensaverCyclePhase = null;
 
-            /* 一直息屏时间显示相关 */
             let alwaysOnAlarmTimer = null;
             let alwaysOnAlarmUpdateTimer = null;
             let alwaysOnAlarmVisible = false;
@@ -5476,11 +5688,9 @@
             async function triggerAlarm(alarm) {
                 if (ringingState) return;
 
-                /* 若当前是息屏时间显示或叠加层，先隐藏叠加层 */
                 if (screensaverActive && screensaverKind === 'time') {
                     hideAlarmOverlay();
                 }
-                /* 若是普通息屏模式则隐藏时间屏 */
                 if (screensaverActive && screensaverKind === 'time' && !prefs.screenSaverAlwaysOn) {
                     hideTimeScreensaver(false);
                 }
@@ -5550,7 +5760,6 @@
                 hideAlarmScreensaver(false);
                 lastActivity = Date.now();
 
-                /* 一直息屏模式：响铃结束后恢复常驻时间屏 */
                 if (prefs.screenSaverAlwaysOn && prefs.screenSaverTimeEnabled && !screensaverActive) {
                     setTimeout(() => {
                         if (prefs.screenSaverAlwaysOn && !screensaverActive && !ringingState) {
@@ -5575,7 +5784,6 @@
                 hideAlarmScreensaver(false);
                 lastActivity = Date.now();
 
-                /* 一直息屏模式：结束后恢复常驻时间屏 */
                 if (prefs.screenSaverAlwaysOn && prefs.screenSaverTimeEnabled && !screensaverActive) {
                     setTimeout(() => {
                         if (prefs.screenSaverAlwaysOn && !screensaverActive && !ringingState) {
@@ -5665,7 +5873,6 @@
                     updateScreensaverContent();
                     return;
                 }
-                /* 一直息屏模式下：不修改 screensaverActive/screensaverKind，直接叠加 */
                 if (prefs.screenSaverAlwaysOn && screensaverActive && screensaverKind === 'time') {
                     updateScreensaverContent();
                     alarmScreensaver.classList.add('active');
@@ -5700,14 +5907,12 @@
                 }
             }
 
-            /* 仅隐藏叠加的闹钟层（不改变时间屏状态） */
             function hideAlarmOverlay() {
                 alarmScreensaver.classList.remove('active');
                 alarmScreensaver.classList.remove('ringing');
                 alwaysOnAlarmVisible = false;
             }
 
-            /* 一直息屏时间显示：闹钟叠加循环 */
             function startAlwaysOnAlarmCycle() {
                 stopAlwaysOnAlarmCycle();
                 alwaysOnAlarmVisible = false;
@@ -5730,12 +5935,10 @@
                     }
 
                     if (alwaysOnAlarmVisible) {
-                        /* 隐藏闹钟叠加层，露出时间屏 */
                         alarmScreensaver.classList.remove('active');
                         alarmScreensaver.classList.remove('ringing');
                         alwaysOnAlarmVisible = false;
                     } else {
-                        /* 显示闹钟叠加层 */
                         updateScreensaverContent();
                         alarmScreensaver.classList.add('active');
                         alwaysOnAlarmVisible = true;
@@ -5763,7 +5966,6 @@
                 }
             }
 
-            /* 息屏时间显示：逐字符更新固定宽度数字，避免整体宽度变化 */
             function updateTimeScreensaverContent() {
                 const el = document.getElementById('tsTime');
                 if (!el) return;
@@ -5795,7 +5997,6 @@
                 if (timeScreensaverUpdateTimer) clearInterval(timeScreensaverUpdateTimer);
                 timeScreensaverUpdateTimer = setInterval(updateTimeScreensaverContent, 500);
 
-                /* 一直息屏模式下不自动隐藏 */
                 if (!prefs.screenSaverAlwaysOn) {
                     if (timeScreensaverTimer) clearTimeout(timeScreensaverTimer);
                     timeScreensaverTimer = setTimeout(() => { hideTimeScreensaver(true); }, 3000);
@@ -5812,7 +6013,6 @@
                 if (fromAuto && screensaverCycleActive && !prefs.screenSaverAlwaysOn) {
                     nextCycleAt = Date.now() + 3000;
                 }
-                /* 非自动隐藏时（用户操作或切换）停止 always-on 循环 */
                 if (!fromAuto) {
                     stopAlwaysOnAlarmCycle();
                 }
@@ -5886,7 +6086,6 @@
                     if (now - lastActivity >= 10000) {
                         screensaverCycleActive = true;
                         if (prefs.screenSaverAlwaysOn && prefs.screenSaverTimeEnabled) {
-                            /* 一直息屏模式 */
                             screensaverCyclePhase = 'always-on';
                             showTimeScreensaver();
                             startAlwaysOnAlarmCycle();
@@ -5965,7 +6164,6 @@
                     savePrefs();
                     if (prefs.screenSaverAlwaysOn) {
                         showToast('一直息屏时间显示已开启');
-                        /* 若当前正处于时间屏，切换到永久模式 */
                         if (screensaverActive && screensaverKind === 'time') {
                             if (timeScreensaverTimer) { clearTimeout(timeScreensaverTimer); timeScreensaverTimer = null; }
                             startAlwaysOnAlarmCycle();
@@ -5973,7 +6171,6 @@
                     } else {
                         showToast('一直息屏时间显示已关闭');
                         stopAlwaysOnAlarmCycle();
-                        /* 若当前时间屏在常驻显示，则恢复3秒自动隐藏 */
                         if (screensaverActive && screensaverKind === 'time') {
                             if (timeScreensaverTimer) clearTimeout(timeScreensaverTimer);
                             timeScreensaverTimer = setTimeout(() => { hideTimeScreensaver(true); }, 3000);
@@ -6063,7 +6260,6 @@
                     return;
                 }
 
-                /* Tab：改为重新启动（不再打开任务视图） */
                 if (e.key === 'Tab' && !e.ctrlKey && !e.metaKey && !e.altKey) {
                     e.preventDefault();
                     showToast('正在重新启动…');
@@ -6320,6 +6516,7 @@
             try { setTimeout(checkHourlyAlarm, 1000); } catch (e) {}
             try { updateFullscreenIcon(); } catch (e) {}
             try { initTimeScreensaverChars(); } catch (e) { console.warn('初始化息屏时间字符失败', e); }
+            try { showSettingsView('root'); } catch (e) {}
 
             (async () => {
                 try { await restoreCustomSound(); } catch (e) { console.warn('恢复提醒声失败', e); }
