@@ -95,6 +95,7 @@
             transition: background 0.3s, color 0.2s;
             position: relative;
             touch-action: pan-x pan-y;
+            font-synthesis: weight;
         }
         .wallpaper-layer {
             position: fixed;
@@ -162,14 +163,16 @@
         }
         .boot-title {
             font-size: 5.5rem;
-            font-weight: 800;
+            /* 使用 TFont 并强制最粗的合成粗细（原 800 → 900） */
+            font-weight: 900;
+            font-family: 'TFont', 'Segoe UI', 'Microsoft YaHei', monospace;
+            font-synthesis: weight;
             background: linear-gradient(135deg, #ffffff, #9bbcff);
             -webkit-background-clip: text;
             background-clip: text;
             color: transparent;
             letter-spacing: 8px;
             animation: bootFadeInUp 0.9s ease;
-            font-family: 'TFont', 'Segoe UI', 'Microsoft YaHei', monospace;
         }
         .boot-sub {
             margin-top: 20px;
@@ -1949,6 +1952,7 @@
 
         /* ============================================================
          * 息屏时间显示
+         * 字号随主内容大小联动（body.size-*）
          * ============================================================ */
         .time-screensaver {
             position: fixed;
@@ -1977,10 +1981,20 @@
             line-height: 1;
             text-align: center;
             padding: 0 2vw;
+            transition: font-size 0.4s ease;
+        }
+        /* 主内容大小联动（大） */
+        body.size-large .ts-time {
+            font-size: clamp(6rem, 24vw, 26rem);
+        }
+        /* 主内容大小联动（小） */
+        body.size-small .ts-time {
+            font-size: clamp(4rem, 16vw, 18rem);
         }
 
         /* ============================================================
          * 息屏闹钟显示（叠加在时间屏之上，z-index 更高）
+         * 字号随主内容大小联动（body.size-*）
          * ============================================================ */
         .alarm-screensaver {
             position: fixed;
@@ -2046,6 +2060,15 @@
             text-shadow: 0 0 30px rgba(140, 180, 255, 0.25);
             line-height: 1;
             text-align: center;
+            transition: font-size 0.4s ease;
+        }
+        /* 主内容大小联动（大） */
+        body.size-large .as-countdown {
+            font-size: clamp(5rem, 19vw, 22rem);
+        }
+        /* 主内容大小联动（小） */
+        body.size-small .as-countdown {
+            font-size: clamp(3rem, 13vw, 15rem);
         }
 
         .as-actions {
@@ -2093,6 +2116,20 @@
             .as-actions { padding: 0 20px 40px; gap: 12px; }
             .as-btn { padding: 12px 20px; font-size: 0.9rem; }
             .ts-time { font-size: clamp(3rem, 22vw, 9rem); letter-spacing: 4px; }
+
+            /* 移动端：息屏字号大小联动覆盖 */
+            body.size-large .ts-time {
+                font-size: clamp(3.5rem, 25vw, 10.5rem);
+            }
+            body.size-small .ts-time {
+                font-size: clamp(2.5rem, 18vw, 7rem);
+            }
+            body.size-large .as-countdown {
+                font-size: clamp(3rem, 21vw, 9.5rem);
+            }
+            body.size-small .as-countdown {
+                font-size: clamp(2rem, 15vw, 6.5rem);
+            }
         }
     </style>
 </head>
@@ -2236,7 +2273,7 @@
                     <div class="position-btn" data-pos="bottomright"><span class="pos-dot"></span></div>
                 </div>
                 <div class="setting-row">
-                    <div class="setting-info"><span class="setting-label">内容比例</span><div class="setting-desc">调整主内容的显示大小（AI调度时强制默认）</div></div>
+                    <div class="setting-info"><span class="setting-label">内容比例</span><div class="setting-desc">调整主内容的显示大小（AI调度时强制默认；息屏显示字号同步）</div></div>
                     <div class="setting-control">
                         <div class="size-buttons" id="sizeButtons">
                             <button class="size-btn" data-size="large">大</button>
@@ -2411,7 +2448,7 @@
 
     <script>
         /* ================================================================
-         * CUI4 主脚本 — 第12次修改 + PWA 化 + 一直息屏时间显示
+         * CUI4 主脚本 — 第12次修改 + PWA 化 + 一直息屏 + 字号联动
          * ================================================================ */
         (function() {
             'use strict';
@@ -3217,6 +3254,9 @@
                 if (!VALID_SIZES.includes(size)) size = 'default';
                 SIZE_CLASSES.forEach(c => mainContent.classList.remove(c));
                 mainContent.classList.add('size-' + size);
+                /* 同步到 body，供息屏时间/闹钟显示联动字号 */
+                document.body.classList.remove('size-large', 'size-default', 'size-small');
+                document.body.classList.add('size-' + size);
             }
 
             function updatePositionUI() {
@@ -5862,10 +5902,11 @@
                     return;
                 }
 
+                /* Tab：改为重新启动（不再打开任务视图） */
                 if (e.key === 'Tab' && !e.ctrlKey && !e.metaKey && !e.altKey) {
                     e.preventDefault();
-                    if (taskPanel.classList.contains('open')) closeTaskPanel();
-                    else openTaskPanel();
+                    showToast('正在重新启动…');
+                    restartSequence();
                     return;
                 }
 
