@@ -3930,6 +3930,14 @@
             let currentBatteryConfirmStep = 0;
 
             async function initBattery() {
+
+                // 👇 测试台式机用
+                if (window.location.search.includes('test_desktop')) {
+                    isMobileDevice = false;
+                    return; 
+                }
+                // 👆 测试台式机用
+
                 if (!navigator.getBattery) {
                     if (prefs.showBattery && batteryDisplayToggle) {
                         batteryDisplayToggle.classList.add('active');
