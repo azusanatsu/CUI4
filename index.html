@@ -10,7 +10,7 @@
 <link rel="icon" href="./icons/favicon.svg" type="image/svg+xml">
 <link rel="icon" href="./icons/favicon-96x96.png" type="image/png">
 <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
-<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="CUI4">
 
@@ -18,9 +18,6 @@
     <style>
         /* ============================================================
          * TFont 自定义字体
-         * 仅应用于：数字 0-9、英文字母 A-Z / a-z，
-         * 以及标点 : , ; ' " [ ! ? ] + - * / =
-         * 中文、图标、其他符号不受影响，走原本字体
          * ============================================================ */
         @font-face {
             font-family: 'TFont';
@@ -29,15 +26,8 @@
             font-style: normal;
             font-display: swap;
             unicode-range:
-                U+0021-0022,
-                U+0027,
-                U+002A-002D,
-                U+002F-003B,
-                U+003D,
-                U+0041-005A,
-                U+005B,
-                U+005D,
-                U+0061-007A;
+                U+0021-0022, U+0027, U+002A-002D, U+002F-003B, U+003D,
+                U+0041-005A, U+005B, U+005D, U+0061-007A;
         }
 
         * {
@@ -372,6 +362,46 @@
             line-height: 1.4;
         }
         .weather-area p { margin: 2px 0; }
+
+        /* 电池指示器 */
+        .battery-indicator {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-top: calc(1rem * var(--content-scale));
+            font-size: calc(1rem * var(--content-scale));
+            color: var(--text-secondary);
+            font-family: 'TFont', monospace;
+            opacity: 0.85;
+            animation: fadeUp 0.6s ease;
+        }
+        .battery-indicator.show { display: flex; }
+        .battery-icon {
+            position: relative;
+            width: 26px; height: 13px;
+            border: 2px solid currentColor;
+            border-radius: 3px;
+            padding: 1px;
+            box-sizing: border-box;
+        }
+        .battery-icon::after {
+            content: ''; position: absolute;
+            right: -4px; top: 50%; transform: translateY(-50%);
+            width: 2px; height: 6px;
+            background: currentColor;
+            border-radius: 0 2px 2px 0;
+        }
+        .battery-level {
+            height: 100%; width: 100%;
+            background: currentColor;
+            border-radius: 1px;
+            transition: width 0.3s, background-color 0.3s;
+        }
+        .battery-indicator.warning .battery-level { background: #e67e22; color: #e67e22; }
+        .battery-indicator.danger .battery-level { background: #ff6b6b; color: #ff6b6b; }
+        .battery-indicator.charging .battery-level { background: #2ecc71; color: #2ecc71; }
+        .battery-indicator.charging .battery-icon::after { background: #2ecc71; }
 
         /* AI 对话区域 */
         .chat-container {
@@ -1680,6 +1710,93 @@
             box-shadow: 0 4px 12px rgba(255, 107, 107, 0.3);
         }
 
+        /* ============================================================
+         * 微型弹窗（电池过放保护）
+         * ============================================================ */
+        .mini-modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s ease;
+        }
+        .mini-modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .mini-modal {
+            background: var(--setting-panel-bg);
+            border: 1px solid var(--setting-border);
+            border-radius: 16px;
+            width: 88%;
+            max-width: 360px;
+            padding: 18px 20px;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+            transform: translateY(15px) scale(0.98);
+            transition: transform 0.25s cubic-bezier(0.23, 1, 0.32, 1);
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+        .mini-modal-overlay.active .mini-modal {
+            transform: translateY(0) scale(1);
+        }
+        .mini-modal-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+            font-size: 1.05rem;
+            color: var(--text-primary);
+        }
+        .mini-modal-header i { font-size: 1.2rem; }
+        .mini-modal-header i.green { color: #2ecc71; }
+        .mini-modal-header i.yellow { color: #f1c40f; }
+        .mini-modal-header i.red { color: #ff6b6b; }
+        .mini-modal-content {
+            font-size: 0.88rem;
+            line-height: 1.55;
+            color: var(--text-secondary);
+        }
+        .mini-modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 4px;
+        }
+        .mini-modal-btn {
+            padding: 6px 18px;
+            border-radius: 20px;
+            border: none;
+            font-size: 0.85rem;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+        .mini-modal-btn.cancel {
+            background: var(--card-glass);
+            color: var(--text-primary);
+            border: 1px solid var(--setting-border);
+        }
+        .mini-modal-btn.cancel:hover { background: rgba(128,128,128,0.2); }
+        .mini-modal-btn.confirm {
+            background: var(--tabs-active);
+            color: white;
+        }
+        .mini-modal-btn.confirm:hover { filter: brightness(1.1); }
+        .mini-modal-btn.confirm.danger {
+            background: #ff6b6b;
+        }
+        .mini-modal-btn.confirm.danger:hover { background: #ff5252; }
+
         /* 响应式 */
         @media (max-width: 640px) {
             .clock { font-size: calc(3rem * var(--content-scale)); }
@@ -1766,7 +1883,6 @@
                 height: 40px;
                 font-size: 18px;
             }
-            /* 移动端返回键：位于面板内部 */
             .settings-back-btn {
                 left: 12px;
                 top: 76px;
@@ -1797,11 +1913,7 @@
         }
         .no-pinch { touch-action: pan-x pan-y; }
 
-        /* ============================================================
-         * 闹钟模块样式
-         * ============================================================ */
-
-        /* 闹钟面板 */
+        /* 闹钟模块样式 */
         .alarm-panel {
             position: fixed;
             top: 2vh;
@@ -1882,7 +1994,6 @@
             font-size: 0.95rem;
         }
 
-        /* 闹钟行（全长） */
         .alarm-row {
             display: flex;
             align-items: center;
@@ -1940,7 +2051,6 @@
         .alarm-btn.primary:hover { filter: brightness(1.1); }
         .alarm-row .toggle-switch { flex-shrink: 0; }
 
-        /* 编辑器 */
         .alarm-editor {
             padding: 20px 24px;
             border-bottom: 1px solid var(--setting-border);
@@ -2058,10 +2168,7 @@
             border-top: 1px solid var(--setting-border);
         }
 
-        /* ============================================================
-         * 息屏时间显示
-         * 数字使用固定宽度 span，避免切换时左右移动
-         * ============================================================ */
+        /* 息屏时间显示 */
         .time-screensaver {
             position: fixed;
             inset: 0;
@@ -2103,16 +2210,10 @@
         }
         .ts-time .ts-ch { width: 0.62em; }
         .ts-time .ts-sep { width: 0.34em; }
-        body.size-large .ts-time {
-            font-size: clamp(6rem, 24vw, 26rem);
-        }
-        body.size-small .ts-time {
-            font-size: clamp(4rem, 16vw, 18rem);
-        }
+        body.size-large .ts-time { font-size: clamp(6rem, 24vw, 26rem); }
+        body.size-small .ts-time { font-size: clamp(4rem, 16vw, 18rem); }
 
-        /* ============================================================
-         * 息屏闹钟显示（叠加在时间屏之上，z-index 更高）
-         * ============================================================ */
+        /* 息屏闹钟显示 */
         .alarm-screensaver {
             position: fixed;
             inset: 0;
@@ -2129,7 +2230,6 @@
             opacity: 1;
             pointer-events: auto;
         }
-
         .as-top-left {
             position: absolute;
             top: 32px;
@@ -2151,7 +2251,6 @@
             letter-spacing: 2px;
             color: #dce6f7;
         }
-
         .as-center {
             flex: 1;
             display: flex;
@@ -2179,13 +2278,8 @@
             text-align: center;
             transition: font-size 0.4s ease;
         }
-        body.size-large .as-countdown {
-            font-size: clamp(5rem, 19vw, 22rem);
-        }
-        body.size-small .as-countdown {
-            font-size: clamp(3rem, 13vw, 15rem);
-        }
-
+        body.size-large .as-countdown { font-size: clamp(5rem, 19vw, 22rem); }
+        body.size-small .as-countdown { font-size: clamp(3rem, 13vw, 15rem); }
         .as-actions {
             display: none;
             justify-content: center;
@@ -2193,9 +2287,7 @@
             padding: 0 40px 60px;
             flex-shrink: 0;
         }
-        .alarm-screensaver.ringing .as-actions {
-            display: flex;
-        }
+        .alarm-screensaver.ringing .as-actions { display: flex; }
         .as-btn {
             padding: 14px 32px;
             font-size: 1rem;
@@ -2231,19 +2323,10 @@
             .as-actions { padding: 0 20px 40px; gap: 12px; }
             .as-btn { padding: 12px 20px; font-size: 0.9rem; }
             .ts-time { font-size: clamp(3rem, 22vw, 9rem); letter-spacing: 0; }
-
-            body.size-large .ts-time {
-                font-size: clamp(3.5rem, 25vw, 10.5rem);
-            }
-            body.size-small .ts-time {
-                font-size: clamp(2.5rem, 18vw, 7rem);
-            }
-            body.size-large .as-countdown {
-                font-size: clamp(3rem, 21vw, 9.5rem);
-            }
-            body.size-small .as-countdown {
-                font-size: clamp(2.5rem, 15vw, 6.5rem);
-            }
+            body.size-large .ts-time { font-size: clamp(3.5rem, 25vw, 10.5rem); }
+            body.size-small .ts-time { font-size: clamp(2.5rem, 18vw, 7rem); }
+            body.size-large .as-countdown { font-size: clamp(3rem, 21vw, 9.5rem); }
+            body.size-small .as-countdown { font-size: clamp(2.5rem, 15vw, 6.5rem); }
         }
     </style>
 </head>
@@ -2272,6 +2355,11 @@
                     <p id="locationText">📍 未选择位置</p>
                     <p id="weatherText">☁️ 加载天气...</p>
                     <p id="tempText">🌡️ --°C</p>
+                </div>
+                <!-- 电池指示器 -->
+                <div class="battery-indicator" id="batteryIndicator">
+                    <div class="battery-icon"><div class="battery-level" id="batteryLevelFill"></div></div>
+                    <span id="batteryText">--%</span>
                 </div>
             </div>
             <div class="search-wrapper" id="searchWrapper">
@@ -2305,7 +2393,6 @@
         <i class="fas fa-expand"></i>
     </button>
 
-    <!-- PWA 安装按钮 -->
     <button class="pwa-install-btn" id="pwaInstallBtn" title="安装 CUI4 到桌面">
         <i class="fas fa-download"></i>
     </button>
@@ -2366,7 +2453,6 @@
             <button class="close-panel" id="closeSettingsBtn"><i class="fas fa-times"></i></button>
         </div>
 
-        <!-- 设置外突出返回键（仅子页面显示） -->
         <button class="settings-back-btn" id="settingsBackBtn" type="button" title="返回上一级">
             <i class="fas fa-arrow-left"></i>
         </button>
@@ -2383,7 +2469,6 @@
                     </div>
                 </div>
 
-                <!-- 分类入口（全长可点击按钮） -->
                 <div class="settings-nav-group">
                     <button class="settings-nav-btn" type="button" data-nav="system">
                         <i class="fas fa-sliders-h"></i>
@@ -2468,7 +2553,6 @@
                     </div>
                 </div>
 
-                <!-- ============ 时间偏好（新增） ============ -->
                 <div class="settings-category">
                     <div class="category-title"><i class="fas fa-clock"></i> 时间偏好</div>
                     <div class="setting-row">
@@ -2493,10 +2577,14 @@
                 </div>
 
                 <div class="settings-category">
-                    <div class="category-title"><i class="fas fa-plug"></i> 阻止系统睡眠</div>
+                    <div class="category-title"><i class="fas fa-plug"></i> 阻止系统睡眠 &amp; 电池</div>
                     <div class="setting-row">
-                        <div class="setting-info"><span class="setting-label">阻止系统睡眠</span><div class="setting-desc">开启后屏幕保持常亮，系统不会自动息屏/休眠（需浏览器支持 Wake Lock）</div></div>
+                        <div class="setting-info"><span class="setting-label">阻止系统睡眠</span><div class="setting-desc">开启后屏幕保持常亮（需浏览器支持 Wake Lock）</div></div>
                         <div class="setting-control"><div id="keepAwakeToggle" class="toggle-switch"></div></div>
+                    </div>
+                    <div class="setting-row">
+                        <div class="setting-info"><span class="setting-label">显示电池电量</span><div class="setting-desc">在主界面显示当前设备电池电量（仅限便携设备）</div></div>
+                        <div class="setting-control"><div id="batteryDisplayToggle" class="toggle-switch"></div></div>
                     </div>
                 </div>
             </div>
@@ -2624,7 +2712,6 @@
         <button class="fs-exit" id="fsExitBtn"><i class="fas fa-compress-alt"></i> 退出全屏</button>
     </div>
 
-    <!-- 闹钟面板 -->
     <div class="alarm-panel" id="alarmPanel">
         <div class="alarm-header">
             <h2 class="alarm-title">
@@ -2642,12 +2729,10 @@
         </div>
     </div>
 
-    <!-- 息屏时间显示 -->
     <div class="time-screensaver" id="timeScreensaver">
         <div class="ts-time" id="tsTime">--:--:--</div>
     </div>
 
-    <!-- 息屏闹钟显示（叠加在时间屏之上） -->
     <div class="alarm-screensaver" id="alarmScreensaver">
         <div class="as-top-left">
             <span class="as-tl-label">闹钟设定时间：</span>
@@ -2665,18 +2750,6 @@
     </div>
 
     <script>
-        /* ================================================================
-         * CUI4 主脚本 — PWA 化 + 一直息屏 + 阻止系统睡眠
-         *                 + 息屏时间数字固定宽度
-         *                 + 设置分类（系统 / 个性化 / 其他）+ 返回键
-         *                 + 搜索成功后清空搜索栏并写入地址栏
-         *                 + ESC 键在设置内：子页面返回上一级，根页面关闭设置
-         *                   面板关闭后 ESC 恢复原本作用（不拦截）
-         *                 + 时间偏好：同步系统时间 / 访问网络时间
-         *                   （按设置地点自动解析时区与时差；
-         *                     无法确定时区时回退北京时间；
-         *                     Intl 不可用时自动切回同步系统时间）
-         * ================================================================ */
         (function() {
             'use strict';
 
@@ -2774,7 +2847,6 @@
                 }, 2500);
             })();
 
-            /* IndexedDB 视频壁纸 */
             const DB_NAME = 'CUI4_WallpaperDB';
             const STORE_NAME = 'videoWallpaper';
             let dbInstance = null;
@@ -2881,7 +2953,6 @@
                 } catch (e) { console.warn('恢复视频壁纸失败', e); }
             }
 
-            /* 自定义提醒声 */
             const SOUND_DB_NAME = 'CUI4_SoundDB';
             const SOUND_STORE = 'customSound';
             let soundDbInstance = null;
@@ -2946,7 +3017,6 @@
                 } catch (e) { console.warn('恢复自定义提醒声失败', e); }
             }
 
-            /* 闹钟模块 - IndexedDB 铃声存储 */
             const ALARM_SOUND_DB = 'CUI4_AlarmSoundDB';
             const ALARM_SOUND_STORE = 'alarmSounds';
             let alarmSoundDbInstance = null;
@@ -3000,7 +3070,6 @@
                 } catch (e) { }
             }
 
-            /* 数据 */
             const locationData = {
                 "未选择": { "未选择": ["未选择"] },
                 "中国": { "北京市": ["东城区", "西城区", "朝阳区", "海淀区"], "上海市": ["黄浦区", "徐汇区", "静安区", "浦东新区"],
@@ -3019,7 +3088,7 @@
             const DEFAULT_PREFS = {
                 themeMode: 'dark',
                 userName: 'CUI4 USER',
-                timePreference: 'system',   // 'system' | 'network'
+                timePreference: 'system',
                 wallpaperType: 'default',
                 wallpaperData: null,
                 brightness: 100,
@@ -3036,7 +3105,8 @@
                 contentSize: 'default',
                 screenSaverTimeEnabled: true,
                 screenSaverAlwaysOn: false,
-                keepAwake: false
+                keepAwake: false,
+                showBattery: false // 默认关闭
             };
 
             let prefs = Object.assign({}, DEFAULT_PREFS);
@@ -3048,7 +3118,6 @@
             } catch (e) { searchHistory = []; }
             let taskItems = [];
 
-            /* 闹钟数据 */
             let alarms = [];
             let editingAlarmId = null;
             let editDraft = null;
@@ -3123,8 +3192,13 @@
             const restartInitialBtn = document.getElementById('restartInitial');
             const fullscreenToggleBtn = document.getElementById('fullscreenToggleBtn');
             const pwaInstallBtn = document.getElementById('pwaInstallBtn');
+            
+            // 新增：电池与唤醒
+            const batteryIndicator = document.getElementById('batteryIndicator');
+            const batteryLevelFill = document.getElementById('batteryLevelFill');
+            const batteryText = document.getElementById('batteryText');
+            const batteryDisplayToggle = document.getElementById('batteryDisplayToggle');
 
-            /* 闹钟相关 DOM */
             const alarmPanel = document.getElementById('alarmPanel');
             const alarmList = document.getElementById('alarmList');
             const alarmCountdownEl = document.getElementById('alarmCountdown');
@@ -3137,13 +3211,11 @@
             const asEndBtn = document.getElementById('asEndBtn');
             const asSnoozeBtn = document.getElementById('asSnoozeBtn');
 
-            /* 息屏时间显示 DOM */
             const timeScreensaver = document.getElementById('timeScreensaver');
             const tsTime = document.getElementById('tsTime');
             const screenSaverTimeToggle = document.getElementById('screenSaverTimeToggle');
             const screenSaverAlwaysOnToggle = document.getElementById('screenSaverAlwaysOnToggle');
 
-            /* 阻止系统睡眠 DOM */
             const keepAwakeToggle = document.getElementById('keepAwakeToggle');
 
             class CountdownTimer {
@@ -3289,7 +3361,6 @@
             }
 
             function playDoubleBeep() {
-                if (customAlertSoundUrl) { playCustomSound(); return; }
                 setTimeout(() => playFeedbackSound(), 50);
                 setTimeout(() => playFeedbackSound(), 350);
             }
@@ -3614,7 +3685,6 @@
                 }
             }
 
-            /* 全屏逻辑 */
             function getElectronBrowserWindow() {
                 try {
                     let remote = null;
@@ -3716,9 +3786,6 @@
                 window._cui4FsResizeTimer = setTimeout(updateFullscreenIcon, 120);
             });
 
-            /* ============================================================
-             * PWA 安装逻辑
-             * ============================================================ */
             let deferredInstallPrompt = null;
             const isStandaloneMode = (function () {
                 try {
@@ -3766,9 +3833,6 @@
                 showToast('CUI4 已安装到桌面');
             });
 
-            /* ============================================================
-             * 阻止系统睡眠（Wake Lock API）
-             * ============================================================ */
             const wakeLockSupported = (function () {
                 try { return typeof navigator !== 'undefined' && 'wakeLock' in navigator; }
                 catch (e) { return false; }
@@ -3849,12 +3913,197 @@
 
             if (keepAwakeToggle) {
                 keepAwakeToggle.addEventListener('click', function () {
-                    setKeepAwake(!prefs.keepAwake, false);
+                    if (prefs.keepAwake) {
+                        setKeepAwake(false, false);
+                    } else {
+                        checkBatteryForWakeLock();
+                    }
                 });
             }
 
             /* ============================================================
-             * 设置分类视图（支持多级返回栈，目前只有一层）
+             * 电池显示与过放保护
+             * ============================================================ */
+            let batteryManager = null;
+            let isMobileDevice = false;
+            let batteryModalEl = null;
+            let currentBatteryConfirmStep = 0;
+
+            async function initBattery() {
+                if (!navigator.getBattery) {
+                    if (prefs.showBattery && batteryDisplayToggle) {
+                        batteryDisplayToggle.classList.add('active');
+                    }
+                    return;
+                }
+                try {
+                    batteryManager = await navigator.getBattery();
+                    isMobileDevice = true;
+                    updateBatteryUI();
+                    batteryManager.addEventListener('levelchange', handleBatteryChange);
+                    batteryManager.addEventListener('chargingchange', handleBatteryChange);
+                    handleBatteryChange(); // 初始检查一次
+                } catch (e) {
+                    console.warn('电池API初始化失败', e);
+                }
+            }
+
+            function updateBatteryUI() {
+                if (!batteryManager) return;
+                const level = batteryManager.level;
+                const pct = Math.round(level * 100);
+                const charging = batteryManager.charging;
+
+                batteryText.innerText = `${pct}%${charging ? ' ⚡' : ''}`;
+                batteryLevelFill.style.width = `${pct}%`;
+
+                batteryIndicator.classList.remove('warning', 'danger', 'charging');
+                if (charging) {
+                    batteryIndicator.classList.add('charging');
+                } else if (level <= 0.20) {
+                    batteryIndicator.classList.add('danger');
+                } else if (level <= 0.85) {
+                    batteryIndicator.classList.add('warning');
+                }
+
+                if (prefs.showBattery) {
+                    batteryIndicator.classList.add('show');
+                } else {
+                    batteryIndicator.classList.remove('show');
+                }
+            }
+
+            function handleBatteryChange() {
+                if (!batteryManager) return;
+                updateBatteryUI();
+                const level = batteryManager.level;
+                const charging = batteryManager.charging;
+
+                // 过放保护逻辑：电池<=85%强制关闭，>85%自动开启
+                // 但如果正在充电，即使电量低，也不强制关闭（用户自己决定）
+                if (!charging) {
+                    if (level <= 0.85) {
+                        if (prefs.keepAwake) {
+                            setKeepAwake(false, true); // 静默关闭
+                            showToast(`🔋 电池过放保护：电量 ${Math.round(level*100)}% ≤ 85%，已自动关闭“阻止系统睡眠”`);
+                        }
+                    } else if (level > 0.85) {
+                        if (!prefs.keepAwake) {
+                            setKeepAwake(true, true); // 静默开启
+                        }
+                    }
+                }
+            }
+
+            // 点击开启时，判断是否需要三重确认
+            function checkBatteryForWakeLock() {
+                let needConfirm = false;
+                if (isMobileDevice) {
+                    if (batteryManager && !batteryManager.charging && batteryManager.level <= 0.85) {
+                        needConfirm = true;
+                    }
+                } else {
+                    needConfirm = true; // 台式机必须确认
+                }
+
+                if (needConfirm) {
+                    currentBatteryConfirmStep = 1;
+                    showBatteryConfirmModal();
+                } else {
+                    setKeepAwake(true, false);
+                }
+            }
+
+            function showBatteryConfirmModal() {
+                if (!batteryModalEl) {
+                    batteryModalEl = document.createElement('div');
+                    batteryModalEl.className = 'mini-modal-overlay';
+                    document.body.appendChild(batteryModalEl);
+                }
+                
+                let iconHtml = '';
+                let titleText = '';
+                let descText = '';
+                let confirmClass = '';
+
+                if (currentBatteryConfirmStep === 1) {
+                    iconHtml = '<i class="fas fa-exclamation-triangle green"></i>';
+                    titleText = '您是否选择手动打开“阻止系统睡眠”？';
+                    confirmClass = '';
+                    if (isMobileDevice) {
+                        descText = '当前设备处于电池供电状态，手动开启可能会加快电量消耗。';
+                    } else {
+                        descText = '当前设备为台式机（无电池），开启后屏幕将保持常亮。';
+                    }
+                } else if (currentBatteryConfirmStep === 2) {
+                    iconHtml = '<i class="fas fa-exclamation-triangle yellow"></i>';
+                    if (isMobileDevice) {
+                        titleText = '即便这会让您的便携设备在未接入电源时使电量耗尽？';
+                        descText = '电池电量可能会持续下降。';
+                    } else {
+                        titleText = '即便这会让您的设备无法睡眠？';
+                        descText = '若发生意外断电将无法保存数据。';
+                    }
+                } else if (currentBatteryConfirmStep === 3) {
+                    iconHtml = '<i class="fas fa-exclamation-triangle red"></i>';
+                    titleText = '最后一次确认';
+                    confirmClass = 'danger';
+                    if (isMobileDevice) {
+                        descText = '您真的确认打开“阻止系统睡眠”，即便设备无法进行睡眠或者休眠，而导致电量耗尽从而被迫放弃未保存的工作？若您的操作导致您的数据丢失本网站概不负责！';
+                    } else {
+                        descText = '您真的确认打开“阻止系统睡眠”，即便设备无法进行睡眠或者休眠，从而可能因为停电或者意外导致被迫放弃未保存的工作？若您的操作导致您的数据丢失本网站概不负责！';
+                    }
+                }
+
+                batteryModalEl.innerHTML = `
+                    <div class="mini-modal">
+                        <div class="mini-modal-header">${iconHtml} ${titleText}</div>
+                        <div class="mini-modal-content">${descText}</div>
+                        <div class="mini-modal-actions">
+                            <button class="mini-modal-btn cancel" id="bmCancel">取消</button>
+                            <button class="mini-modal-btn confirm ${confirmClass}" id="bmConfirm">确认</button>
+                        </div>
+                    </div>
+                `;
+
+                requestAnimationFrame(() => batteryModalEl.classList.add('active'));
+
+                document.getElementById('bmCancel').addEventListener('click', () => {
+                    batteryModalEl.classList.remove('active');
+                    currentBatteryConfirmStep = 0;
+                });
+
+                document.getElementById('bmConfirm').addEventListener('click', () => {
+                    if (currentBatteryConfirmStep < 3) {
+                        currentBatteryConfirmStep++;
+                        showBatteryConfirmModal();
+                    } else {
+                        batteryModalEl.classList.remove('active');
+                        currentBatteryConfirmStep = 0;
+                        setKeepAwake(true, false);
+                    }
+                });
+            }
+
+            // 添加显示电池开关的点击事件
+            if (batteryDisplayToggle) {
+                batteryDisplayToggle.addEventListener('click', () => {
+                    if (!isMobileDevice && !batteryManager) {
+                        showToast('当前设备不支持电池检测');
+                        return;
+                    }
+                    prefs.showBattery = !prefs.showBattery;
+                    batteryDisplayToggle.classList.toggle('active', prefs.showBattery);
+                    savePrefs();
+                    updateBatteryUI();
+                });
+            }
+
+            // 初始化电池
+            initBattery();
+
+            /* ============================================================
+             * 设置分类视图
              * ============================================================ */
             const settingsViewParents = {
                 'root': null,
@@ -3876,7 +4125,6 @@
                 } catch (e) { console.warn('切换设置视图失败', e); }
             }
 
-            /* 返回上一级设置视图；若已在根视图返回 false */
             function goBackSettingsView() {
                 const parent = settingsViewParents[currentSettingsView];
                 if (parent) {
@@ -3960,10 +4208,6 @@
                 showFuncPanelElement();
                 stopFuncCountdown();
                 if (fullscreenOverlay.classList.contains('active')) exitFullscreen();
-            }
-
-            function startFuncCountdown() {
-                _startFuncCountdownInternal();
             }
 
             function stopFuncCountdown() {
@@ -4422,7 +4666,6 @@
                     if (fsInterval) clearInterval(fsInterval);
                     fsInterval = setInterval(() => { fsDisplay.innerText = formatStopwatch(stopwatch.getMs()); }, 20);
                 } else if (mode === 'calculator') {
-                    fsCalcContainer.style.display = 'flex';
                     renderCalculatorFullscreen();
                 }
                 if (settingsPanel.classList.contains('open')) closeSettings();
@@ -4628,9 +4871,6 @@
             }, { passive: false });
             document.addEventListener('touchend', (e) => { if (e.touches.length < 2) lastPinchDist = 0; }, { passive: true });
 
-            /* ============================================================
-             * 单指滑动手势
-             * ============================================================ */
             (function initSwipeGestures() {
                 let startX = 0, startY = 0, startTime = 0, tracking = false;
 
@@ -4742,8 +4982,6 @@
 
             function observeTaskVideos() {
                 taskPanel.querySelectorAll('video').forEach(v => {
-                    if (v._countdownBound) return;
-                    v._countdownBound = true;
                     const playFn = () => { taskCountdown.stop(); };
                     const pauseFn = () => {
                         let playing = 0;
@@ -4891,7 +5129,6 @@
                 renderSearchHistory();
             }
 
-            /* ---------- 搜索：成功跳转后清空搜索栏 + 写入地址栏 ---------- */
             function performSearch() {
                 let q = searchInput.value.trim();
                 if (!q) return;
@@ -4902,8 +5139,7 @@
                 let openedWin = null;
                 try { openedWin = window.open(url, '_blank'); } catch (e) { openedWin = null; }
 
-                /* 认为跳转或搜索已成功触发：写入地址栏 + 清空搜索栏 */
-                const success = (openedWin !== null) || true; /* window.open 被拦截时也认为已尝试；如需严格可改为 openedWin !== null */
+                const success = (openedWin !== null) || true;
                 if (success) {
                     try {
                         history.replaceState(null, '', '#q=' + encodeURIComponent(q));
@@ -5002,7 +5238,6 @@
                 }
                 savePrefs();
 
-                // 网络时间模式下，地点改变后重新解析时区
                 if (prefs.timePreference === 'network') {
                     syncNetworkTime(false);
                 }
@@ -5077,6 +5312,12 @@
                 } catch (e) { console.warn('初始化屏幕常亮失败', e); }
 
                 try {
+                    if (batteryDisplayToggle) {
+                        batteryDisplayToggle.classList.toggle('active', !!prefs.showBattery);
+                    }
+                } catch(e) {}
+
+                try {
                     if (prefs.wallpaperType === 'video') {
                         restoreVideoWallpaper();
                     } else if (prefs.wallpaperType === 'image' && prefs.wallpaperData) {
@@ -5118,14 +5359,7 @@
                 } catch (e) {}
             }
 
-            /* ============================================================
-             * 时间偏好：时区映射 + 当地/网络时间工具
-             * - 通过设置的地点自动解析 IANA 时区
-             * - 用 Intl.DateTimeFormat 计算真实时差（含夏令时）
-             * - 无法确定时区 → 回退北京时间
-             * - Intl 亦不可用 → 自动切回「同步系统时间」
-             * ============================================================ */
-            const DEFAULT_TIMEZONE = 'Asia/Shanghai';   // 回退：北京时间
+            const DEFAULT_TIMEZONE = 'Asia/Shanghai';
 
             const TIMEZONE_MAP = {
                 '中国': { __default: 'Asia/Shanghai' },
@@ -5149,13 +5383,12 @@
             };
 
             let networkTimeState = {
-                timeZone: null,     // 生效的 IANA 时区
+                timeZone: null,
                 valid: false,
-                fallback: false,    // 是否走了北京时间回退
+                fallback: false,
                 lastSync: 0
             };
 
-            /* 从当前地点解析时区；返回 null 表示无法解析 */
             function resolveTimeZoneFromLocation() {
                 const country = prefs.locationCountry || '未选择';
                 const state   = prefs.locationState   || '未选择';
@@ -5172,7 +5405,6 @@
                 } catch (e) { return false; }
             }
 
-            /* 取某时区在指定时刻的 UTC 偏移（分钟，含夏令时） */
             function getTimeZoneOffsetMinutes(timeZone, date) {
                 const dtf = new Intl.DateTimeFormat('en-US', {
                     timeZone: timeZone,
@@ -5196,7 +5428,6 @@
                 return Math.round((asUTC - date.getTime()) / 60000);
             }
 
-            /* 取某时区下的年月日时分秒 */
             function getDatePartsInZone(timeZone, date) {
                 const dtf = new Intl.DateTimeFormat('en-US', {
                     timeZone: timeZone,
@@ -5219,15 +5450,12 @@
                 };
             }
 
-            /* 统一入口：返回“当前要显示的 Date”
-             * network 模式下返回该时区的墙上时间（其 getHours() 等即为当地时间） */
             function getDisplayDate() {
                 if (prefs.timePreference === 'network' && networkTimeState.valid && networkTimeState.timeZone) {
                     try {
                         const p = getDatePartsInZone(networkTimeState.timeZone, new Date());
                         return new Date(p.year, p.month - 1, p.day, p.hour, p.minute, p.second);
                     } catch (e) {
-                        // 时区不受支持 → 静默退回系统时间
                     }
                 }
                 return new Date();
@@ -5241,7 +5469,6 @@
                 return `UTC${sign}${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
             }
 
-            /* 同步 / 应用网络时间 */
             function syncNetworkTime(showMsg) {
                 let tz = resolveTimeZoneFromLocation();
                 let fallbackUsed = false;
@@ -5256,7 +5483,6 @@
                         tz = DEFAULT_TIMEZONE;
                         fallbackUsed = true;
                     } else {
-                        // Intl 完全不可用 → 切回同步系统时间
                         networkTimeState = { timeZone: null, valid: false, fallback: false, lastSync: 0 };
                         prefs.timePreference = 'system';
                         savePrefs();
@@ -5285,7 +5511,6 @@
                 return true;
             }
 
-            /* 切换时间偏好 */
             function setTimePreference(mode) {
                 if (mode !== 'system' && mode !== 'network') return;
                 prefs.timePreference = mode;
@@ -5302,7 +5527,6 @@
                 }
             }
 
-            /* 刷新设置面板上的 UI */
             function updateTimePreferenceUI() {
                 document.querySelectorAll('#timePreferenceGroup .theme-btn').forEach(btn => {
                     btn.classList.toggle('active', btn.dataset.timePref === prefs.timePreference);
@@ -5550,10 +5774,6 @@
                 }, 800);
             }
 
-            /* ============================================================
-             * 闹钟模块 — 核心逻辑
-             * ============================================================ */
-
             let alarmPanelOpen = false;
             let ringingState = null;
             let lastActivity = Date.now();
@@ -5574,7 +5794,6 @@
             let alwaysOnAlarmUpdateTimer = null;
             let alwaysOnAlarmVisible = false;
 
-            /* 息屏时间显示：固定宽度数字字符结构 */
             const TS_LAYOUT = ['n','n','s','n','n','s','n','n'];
             function initTimeScreensaverChars() {
                 const el = document.getElementById('tsTime');
@@ -6171,8 +6390,7 @@
                 if (!screensaverActive || screensaverKind !== 'alarm') return;
                 screensaverActive = false;
                 screensaverKind = null;
-                alarmScreensaver.classList.remove('active');
-                alarmScreensaver.classList.remove('ringing');
+                alarmScreensaver.classList.remove('active', 'ringing');
                 screensaverRinging = false;
                 if (screensaverTimer) { clearTimeout(screensaverTimer); screensaverTimer = null; }
                 if (screensaverCountdownTimer) { clearInterval(screensaverCountdownTimer); screensaverCountdownTimer = null; }
@@ -6182,8 +6400,7 @@
             }
 
             function hideAlarmOverlay() {
-                alarmScreensaver.classList.remove('active');
-                alarmScreensaver.classList.remove('ringing');
+                alarmScreensaver.classList.remove('active', 'ringing');
                 alwaysOnAlarmVisible = false;
             }
 
@@ -6201,16 +6418,14 @@
                     const alarmEnabled = alarms.some(a => a.enabled && a.saved);
                     if (!alarmEnabled) {
                         if (alwaysOnAlarmVisible) {
-                            alarmScreensaver.classList.remove('active');
-                            alarmScreensaver.classList.remove('ringing');
+                            alarmScreensaver.classList.remove('active', 'ringing');
                             alwaysOnAlarmVisible = false;
                         }
                         return;
                     }
 
                     if (alwaysOnAlarmVisible) {
-                        alarmScreensaver.classList.remove('active');
-                        alarmScreensaver.classList.remove('ringing');
+                        alarmScreensaver.classList.remove('active', 'ringing');
                         alwaysOnAlarmVisible = false;
                     } else {
                         updateScreensaverContent();
@@ -6234,8 +6449,7 @@
                     alwaysOnAlarmUpdateTimer = null;
                 }
                 if (alwaysOnAlarmVisible) {
-                    alarmScreensaver.classList.remove('active');
-                    alarmScreensaver.classList.remove('ringing');
+                    alarmScreensaver.classList.remove('active', 'ringing');
                     alwaysOnAlarmVisible = false;
                 }
             }
@@ -6453,9 +6667,6 @@
                 });
             }
 
-            /* ============================================================
-             * 输入模式检测
-             * ============================================================ */
             function isInputFocused() {
                 const active = document.activeElement;
                 if (!active) return false;
@@ -6463,9 +6674,6 @@
                 return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || active.isContentEditable;
             }
 
-            /* ============================================================
-             * Shift 待触发动作
-             * ============================================================ */
             let shiftPending = null;
             let shiftOpenTimer = null;
 
@@ -6474,25 +6682,13 @@
                 shiftPending = null;
             }
 
-            /* ============================================================
-             * 数字键 → 九宫格位置
-             * ============================================================ */
             const POS_KEY_MAP = {
                 '1': 'topleft', '2': 'top', '3': 'topright',
                 '4': 'left', '5': 'center', '6': 'right',
                 '7': 'bottomleft', '8': 'bottom', '9': 'bottomright'
             };
 
-            /* ============================================================
-             * 全局键盘快捷键
-             * ============================================================ */
             document.addEventListener('keydown', function(e) {
-                /* -------- 设置面板 ESC 优先处理（在输入框检测之前） --------
-                 * 设置面板打开时：
-                 *   · 有父级（子页面） → 返回上一级设置视图（消费事件）
-                 *   · 已在根视图     → 关闭设置面板（消费事件）
-                 * 设置面板未打开时：不消费 ESC，让其恢复原本作用
-                 */
                 if (e.key === 'Escape' && settingsPanel.classList.contains('open')) {
                     e.preventDefault();
                     e.stopPropagation();
@@ -6651,7 +6847,6 @@
                 if (e.ctrlKey) e.preventDefault();
             }, { passive: false });
 
-            /* 事件绑定 */
             searchConfirmBtn.addEventListener('click', performSearch);
             searchInput.addEventListener('focus', () => { if (searchHistory.length) historyPanel.classList.add('show'); });
             searchInput.addEventListener('blur', () => setTimeout(() => historyPanel.classList.remove('show'), 200));
@@ -6692,12 +6887,10 @@
                 });
             });
 
-            /* 时间偏好按钮 */
             document.querySelectorAll('#timePreferenceGroup .theme-btn').forEach(btn => {
                 btn.addEventListener('click', () => setTimePreference(btn.dataset.timePref));
             });
 
-            /* 重新获取网络时间按钮 */
             const refreshNetworkTimeBtn = document.getElementById('refreshNetworkTimeBtn');
             if (refreshNetworkTimeBtn) {
                 refreshNetworkTimeBtn.addEventListener('click', () => {
@@ -6828,7 +7021,6 @@
 
             try { setInterval(updateDateTime, 1000); } catch (e) {}
             try { setInterval(() => { if (prefs.themeMode === 'auto') applyThemeFromPref(); }, 60000); } catch (e) {}
-            /* 网络时间模式下定期刷新时差（含夏令时切换） */
             try {
                 setInterval(() => {
                     if (prefs.timePreference === 'network') updateTimePreferenceUI();
