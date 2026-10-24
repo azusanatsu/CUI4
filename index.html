@@ -2250,7 +2250,10 @@
             font-weight: 500;
             letter-spacing: 2px;
             color: #dce6f7;
+            transition: font-size 0.4s ease;
         }
+        body.size-large .as-tl-time { font-size: 2.2rem; }
+        body.size-small .as-tl-time { font-size: 1.2rem; }
         .as-center {
             flex: 1;
             display: flex;
@@ -2266,7 +2269,10 @@
             font-family: 'TFont', 'JetBrains Mono', monospace;
             color: #cbd7ea;
             flex-shrink: 0;
+            transition: font-size 0.4s ease;
         }
+        body.size-large .as-side { font-size: 1.6rem; letter-spacing: 5px; }
+        body.size-small .as-side { font-size: 0.9rem; letter-spacing: 3px; }
         .as-countdown {
             font-family: 'TFont', 'JetBrains Mono', monospace;
             font-size: clamp(4rem, 16vw, 18rem);
@@ -2307,6 +2313,52 @@
         }
         .as-btn-end:hover { background: var(--tabs-active); filter: brightness(1.15); }
 
+        /* ============================================================
+         * 息屏电源显示（低电量警告）
+         * ============================================================ */
+        .power-screensaver {
+            position: fixed;
+            inset: 0;
+            background: #000;
+            z-index: 8004;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.55s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 3vh;
+            color: #ff3b3b;
+        }
+        .power-screensaver.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .power-screensaver .ps-icon {
+            font-size: clamp(6rem, 20vw, 20rem);
+            color: #ff3b3b;
+            line-height: 1;
+            filter: drop-shadow(0 0 40px rgba(255, 59, 59, 0.35));
+            transition: font-size 0.4s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .power-screensaver .ps-text {
+            font-family: 'TFont', 'JetBrains Mono', 'Microsoft YaHei', sans-serif;
+            font-size: clamp(1.8rem, 5.5vw, 5.5rem);
+            font-weight: 700;
+            letter-spacing: 6px;
+            color: #ff3b3b;
+            text-shadow: 0 0 30px rgba(255, 59, 59, 0.3);
+            transition: font-size 0.4s ease;
+        }
+        body.size-large .power-screensaver .ps-icon { font-size: clamp(7rem, 24vw, 24rem); }
+        body.size-large .power-screensaver .ps-text { font-size: clamp(2.2rem, 6.8vw, 6.8rem); }
+        body.size-small .power-screensaver .ps-icon { font-size: clamp(4rem, 15vw, 15rem); }
+        body.size-small .power-screensaver .ps-text { font-size: clamp(1.3rem, 4vw, 4rem); letter-spacing: 5px; }
+
         @media (max-width: 640px) {
             .alarm-title { font-size: 0.95rem; }
             .alarm-title span { display: inline; }
@@ -2327,6 +2379,12 @@
             body.size-small .ts-time { font-size: clamp(2.5rem, 18vw, 7rem); }
             body.size-large .as-countdown { font-size: clamp(3rem, 21vw, 9.5rem); }
             body.size-small .as-countdown { font-size: clamp(2.5rem, 15vw, 6.5rem); }
+            .power-screensaver .ps-icon { font-size: clamp(4rem, 26vw, 12rem); }
+            .power-screensaver .ps-text { font-size: clamp(1.4rem, 7vw, 2.8rem); letter-spacing: 4px; }
+            body.size-large .power-screensaver .ps-icon { font-size: clamp(5rem, 30vw, 14rem); }
+            body.size-large .power-screensaver .ps-text { font-size: clamp(1.7rem, 8vw, 3.4rem); }
+            body.size-small .power-screensaver .ps-icon { font-size: clamp(3rem, 22vw, 10rem); }
+            body.size-small .power-screensaver .ps-text { font-size: clamp(1.1rem, 5.5vw, 2.2rem); }
         }
     </style>
 </head>
@@ -2672,11 +2730,11 @@
                 <div class="settings-category">
                     <div class="category-title"><i class="fas fa-clock"></i> 息屏时间显示</div>
                     <div class="setting-row">
-                        <div class="setting-info"><span class="setting-label">息屏时间显示</span><div class="setting-desc">10秒无操作后循环息屏显示当前时间（与闹钟可轮播，时间优先）</div></div>
+                        <div class="setting-info"><span class="setting-label">息屏时间显示</span><div class="setting-desc">10秒无操作后循环息屏显示当前时间（与闹钟/电源警告可轮播，时间优先）</div></div>
                         <div class="setting-control"><div id="screenSaverTimeToggle" class="toggle-switch"></div></div>
                     </div>
                     <div class="setting-row">
-                        <div class="setting-info"><span class="setting-label">一直息屏时间显示</span><div class="setting-desc">开启后10秒无操作进入永久息屏（时间屏常驻，闹钟屏每3秒叠加3秒循环），任意操作退出</div></div>
+                        <div class="setting-info"><span class="setting-label">一直息屏时间显示</span><div class="setting-desc">开启后10秒无操作进入永久息屏（时间/闹钟/电源警告每3秒交替），任意操作退出</div></div>
                         <div class="setting-control"><div id="screenSaverAlwaysOnToggle" class="toggle-switch"></div></div>
                     </div>
                 </div>
@@ -2731,6 +2789,11 @@
 
     <div class="time-screensaver" id="timeScreensaver">
         <div class="ts-time" id="tsTime">--:--:--</div>
+    </div>
+
+    <div class="power-screensaver" id="powerScreensaver">
+        <div class="ps-icon"><i class="fas fa-exclamation-triangle"></i></div>
+        <div class="ps-text">请接入电源</div>
     </div>
 
     <div class="alarm-screensaver" id="alarmScreensaver">
@@ -3085,6 +3148,16 @@
             const STORAGE = 'cui4_user_prefs';
             const ALARM_STORAGE = 'cui4_alarms';
 
+            /* ==== 仓库根目录音频资源（与 HTML 同目录） ==== */
+            const AUDIO_DEFAULT_ALERT = './AdiosMRTSY.wav';   // 系统默认提示音（准时提醒/反馈/倒计时完成）
+            const AUDIO_DEFAULT_ALARM = './AdiosNZ.wav';      // 闹钟默认铃声
+            const AUDIO_POWER_WARN    = './AdiosXPDYXS.wav';  // 息屏电源警告音（每次进入电源屏播放一次）
+
+            let defaultAlertAudioAvailable = true;
+            let defaultAlarmAudioAvailable = true;
+            let powerWarningAudioAvailable = true;
+            let currentAlarmAudio = null;
+
             const DEFAULT_PREFS = {
                 themeMode: 'dark',
                 userName: 'CUI4 USER',
@@ -3216,6 +3289,8 @@
             const screenSaverTimeToggle = document.getElementById('screenSaverTimeToggle');
             const screenSaverAlwaysOnToggle = document.getElementById('screenSaverAlwaysOnToggle');
 
+            const powerScreensaver = document.getElementById('powerScreensaver');
+
             const keepAwakeToggle = document.getElementById('keepAwakeToggle');
 
             class CountdownTimer {
@@ -3333,8 +3408,8 @@
                 }
             }
 
-            function playFeedbackSound(volOverride) {
-                if (customAlertSoundUrl) { playCustomSound(volOverride); return; }
+            /* ==== 内置 HTML 生成音（最终兜底） ==== */
+            function playHtmlGeneratedBeep(volOverride) {
                 try {
                     const ctx = getAudioContext();
                     const now = ctx.currentTime;
@@ -3360,9 +3435,91 @@
                 } catch (e) { console.warn("反馈音失败", e); }
             }
 
+            /* ==== 默认反馈提示音：优先 AdiosMRTSY.wav，失败回退 HTML 生成音 ==== */
+            function playFeedbackSound(volOverride) {
+                if (customAlertSoundUrl) { playCustomSound(volOverride); return; }
+                if (defaultAlertAudioAvailable) {
+                    try {
+                        const audio = new Audio(AUDIO_DEFAULT_ALERT);
+                        let vol = (volOverride !== undefined ? volOverride : currentVolumePercent) / 100;
+                        audio.volume = Math.max(0, Math.min(1, vol));
+                        const p = audio.play();
+                        if (p && typeof p.catch === 'function') {
+                            p.catch(() => {
+                                defaultAlertAudioAvailable = false;
+                                playHtmlGeneratedBeep(volOverride);
+                            });
+                        }
+                        return;
+                    } catch (e) {
+                        defaultAlertAudioAvailable = false;
+                    }
+                }
+                playHtmlGeneratedBeep(volOverride);
+            }
+
             function playDoubleBeep() {
                 setTimeout(() => playFeedbackSound(), 50);
                 setTimeout(() => playFeedbackSound(), 350);
+            }
+
+            /* ==== 电源警告音：优先 AdiosXPDYXS.wav，失败回退到默认提示音 ==== */
+            function playPowerWarningSound() {
+                if (powerWarningAudioAvailable) {
+                    try {
+                        const audio = new Audio(AUDIO_POWER_WARN);
+                        audio.volume = Math.max(0, Math.min(1, currentVolumePercent / 100));
+                        const p = audio.play();
+                        if (p && typeof p.catch === 'function') {
+                            p.catch(() => {
+                                powerWarningAudioAvailable = false;
+                                playFeedbackSound();
+                            });
+                        }
+                        return;
+                    } catch (e) {
+                        powerWarningAudioAvailable = false;
+                    }
+                }
+                playFeedbackSound();
+            }
+
+            /* ==== 闹钟默认铃声：优先 AdiosNZ.wav，失败回退 HTML 生成音（不使用 AdiosMRTSY） ==== */
+            function playDefaultAlarmAudio(volOverride) {
+                if (!defaultAlarmAudioAvailable) return false;
+                try {
+                    if (currentAlarmAudio) {
+                        try { currentAlarmAudio.pause(); currentAlarmAudio.currentTime = 0; } catch (e) {}
+                        currentAlarmAudio = null;
+                    }
+                    const audio = new Audio(AUDIO_DEFAULT_ALARM);
+                    audio.loop = true;
+                    let vol = (volOverride !== undefined ? volOverride : currentVolumePercent) / 100;
+                    audio.volume = Math.max(0, Math.min(1, vol));
+                    currentAlarmAudio = audio;
+                    const p = audio.play();
+                    if (p && typeof p.catch === 'function') {
+                        p.catch(() => {
+                            defaultAlarmAudioAvailable = false;
+                            if (currentAlarmAudio === audio) currentAlarmAudio = null;
+                            startHtmlDefaultRingingBeep();
+                        });
+                    }
+                    return true;
+                } catch (e) {
+                    defaultAlarmAudioAvailable = false;
+                    return false;
+                }
+            }
+
+            function startHtmlDefaultRingingBeep() {
+                if (!ringingState) return;
+                if (ringingState.beepTimer) clearInterval(ringingState.beepTimer);
+                playHtmlGeneratedBeep();
+                ringingState.beepTimer = setInterval(() => {
+                    if (!ringingState) return;
+                    playHtmlGeneratedBeep();
+                }, 1000);
             }
 
             function applyVolumeToMedia(vol) {
@@ -3373,6 +3530,8 @@
                     document.querySelectorAll('audio, video').forEach(media => {
                         if (media !== bgVideo || !bgVideo.muted) media.volume = volDecimal;
                     });
+                    if (currentAlarmAudio) currentAlarmAudio.volume = volDecimal;
+                    if (currentCustomAudio) currentCustomAudio.volume = volDecimal;
                 } catch (e) {}
             }
             let volumeFeedbackTimer = null;
@@ -3954,6 +4113,13 @@
                 } catch (e) {
                     console.warn('电池API初始化失败', e);
                 }
+            }
+
+            /* ==== 低电量判断（用于息屏电源显示） ==== */
+            function isPowerLow() {
+                if (!isMobileDevice) return false;
+                if (!batteryManager) return false;
+                return !batteryManager.charging && batteryManager.level <= 0.85;
             }
 
             function updateBatteryUI() {
@@ -5794,6 +5960,8 @@
             let lastTriggeredMinuteMap = new Map();
 
             let screensaverKind = null;
+            let screensaverSeqIndex = 0;      // 息屏轮播序列索引
+            let powerScreensaverTimer = null; // 电源屏自身 3s 计时
             let timeScreensaverTimer = null;
             let timeScreensaverUpdateTimer = null;
             let screensaverCyclePhase = null;
@@ -5814,6 +5982,17 @@
                     span.textContent = (t === 's') ? ':' : '-';
                     el.appendChild(span);
                 });
+            }
+
+            /* ============================================================
+             * 息屏轮播序列：动态构建 [时间, 闹钟, 电源]
+             * ============================================================ */
+            function buildScreensaverSequence() {
+                const seq = [];
+                if (prefs.screenSaverTimeEnabled) seq.push('time');
+                if (alarms.some(a => a.enabled && a.saved)) seq.push('alarm');
+                if (isPowerLow()) seq.push('power');
+                return seq;
             }
 
             function loadAlarms() {
@@ -5842,7 +6021,7 @@
 
             function getAlarmSoundDisplayName(alarm) {
                 if (alarm.hasCustomSound && alarm.soundName) return alarm.soundName;
-                return '默认铃声（叮~）';
+                return '默认铃声（AdiosNZ.wav）';
             }
 
             function formatHHMM(str) {
@@ -6033,7 +6212,7 @@
                     await deleteAlarmSoundBlob(alarm.id);
                     editDraft.soundName = null;
                     editDraft.hasCustomSound = false;
-                    editor.querySelector('#alarmSoundName').textContent = '默认铃声（叮~）';
+                    editor.querySelector('#alarmSoundName').textContent = '默认铃声（AdiosNZ.wav）';
                     showToast('已恢复默认铃声');
                 });
 
@@ -6177,18 +6356,16 @@
             }
             setInterval(checkAlarms, 1000);
 
-            function startDefaultRingingBeep() {
-                if (!ringingState) return;
-                playDoubleBeep();
-                ringingState.beepTimer = setInterval(() => {
-                    if (!ringingState) return;
-                    playDoubleBeep();
-                }, 1000);
-            }
-
             async function triggerAlarm(alarm) {
                 if (ringingState) return;
 
+                // 先清理电源屏（如果正在显示）
+                if (screensaverActive && screensaverKind === 'power') {
+                    powerScreensaver.classList.remove('active');
+                    screensaverActive = false;
+                    screensaverKind = null;
+                    if (powerScreensaverTimer) { clearTimeout(powerScreensaverTimer); powerScreensaverTimer = null; }
+                }
                 if (screensaverActive && screensaverKind === 'time') {
                     hideAlarmOverlay();
                 }
@@ -6220,13 +6397,17 @@
                             ringingState.customAudio = audio;
                             audio.play().catch(e => console.warn('自定义铃声播放失败', e));
                         } catch (e) {
-                            if (ringingState) startDefaultRingingBeep();
+                            if (ringingState) startHtmlDefaultRingingBeep();
                         }
                     } else if (ringingState) {
-                        startDefaultRingingBeep();
+                        startHtmlDefaultRingingBeep();
                     }
                 } else {
-                    startDefaultRingingBeep();
+                    // 默认铃声：优先 AdiosNZ.wav，失败回退 HTML 生成音
+                    if (ringingState) {
+                        const ok = playDefaultAlarmAudio();
+                        if (!ok) startHtmlDefaultRingingBeep();
+                    }
                 }
 
                 if (ringingState && alarm.singleRingMinutes > 0) {
@@ -6248,6 +6429,10 @@
                 if (ringingState.customAudioUrl) {
                     try { URL.revokeObjectURL(ringingState.customAudioUrl); } catch (e) {}
                     ringingState.customAudioUrl = null;
+                }
+                if (currentAlarmAudio) {
+                    try { currentAlarmAudio.pause(); currentAlarmAudio.currentTime = 0; } catch (e) {}
+                    currentAlarmAudio = null;
                 }
                 if (ringingState.beepTimer) {
                     clearInterval(ringingState.beepTimer);
@@ -6278,6 +6463,7 @@
 
                 if (ringingState.customAudio) { try { ringingState.customAudio.pause(); } catch (e) {} }
                 if (ringingState.customAudioUrl) { try { URL.revokeObjectURL(ringingState.customAudioUrl); } catch (e) {} }
+                if (currentAlarmAudio) { try { currentAlarmAudio.pause(); currentAlarmAudio.currentTime = 0; } catch (e) {} currentAlarmAudio = null; }
                 if (ringingState.beepTimer) { clearInterval(ringingState.beepTimer); }
                 if (ringingState.endTimeout) { clearTimeout(ringingState.endTimeout); }
                 ringingState = null;
@@ -6301,7 +6487,8 @@
             function canShowScreensaver() {
                 const timeEnabled = !!prefs.screenSaverTimeEnabled;
                 const alarmEnabled = alarms.some(a => a.enabled && a.saved);
-                if (!timeEnabled && !alarmEnabled) return false;
+                const powerLow = isPowerLow();
+                if (!timeEnabled && !alarmEnabled && !powerLow) return false;
                 if (settingsPanel.classList.contains('open')) return false;
                 if (taskPanel.classList.contains('open')) return false;
                 if (initialConfirmPanel.classList.contains('show')) return false;
@@ -6364,6 +6551,9 @@
                 if (screensaverActive && screensaverKind === 'time' && !prefs.screenSaverAlwaysOn) {
                     hideTimeScreensaver(false);
                 }
+                if (screensaverActive && screensaverKind === 'power' && !prefs.screenSaverAlwaysOn) {
+                    hidePowerScreensaver(false);
+                }
 
                 if (isRinging) {
                     screensaverRinging = true;
@@ -6407,14 +6597,56 @@
                 }
             }
 
+            function showPowerScreensaver() {
+                if (screensaverActive && screensaverKind === 'power') return;
+                if (screensaverActive && screensaverKind === 'time' && !prefs.screenSaverAlwaysOn) {
+                    hideTimeScreensaver(false);
+                }
+                if (screensaverActive && screensaverKind === 'alarm' && !prefs.screenSaverAlwaysOn) {
+                    hideAlarmScreensaver(false);
+                }
+
+                screensaverActive = true;
+                screensaverKind = 'power';
+                powerScreensaver.classList.add('active');
+                updateScreensaverContent();
+
+                // 每次进入电源屏播放一次提示音
+                playPowerWarningSound();
+
+                if (!prefs.screenSaverAlwaysOn) {
+                    if (powerScreensaverTimer) clearTimeout(powerScreensaverTimer);
+                    powerScreensaverTimer = setTimeout(() => { hidePowerScreensaver(true); }, 3000);
+                }
+            }
+
+            function hidePowerScreensaver(fromAuto) {
+                if (!screensaverActive || screensaverKind !== 'power') return;
+                screensaverActive = false;
+                screensaverKind = null;
+                powerScreensaver.classList.remove('active');
+                if (powerScreensaverTimer) { clearTimeout(powerScreensaverTimer); powerScreensaverTimer = null; }
+                if (fromAuto && screensaverCycleActive && !prefs.screenSaverAlwaysOn) {
+                    nextCycleAt = Date.now() + 3000;
+                }
+            }
+
             function hideAlarmOverlay() {
                 alarmScreensaver.classList.remove('active', 'ringing');
                 alwaysOnAlarmVisible = false;
             }
 
+            /* ==== 常显模式：时间层常驻，闹钟/电源层按序列交替叠加 ==== */
             function startAlwaysOnAlarmCycle() {
                 stopAlwaysOnAlarmCycle();
                 alwaysOnAlarmVisible = false;
+
+                const seq = buildScreensaverSequence();
+                if (seq.length <= 1) return;
+
+                // 从 time 之后的下一项开始（时间层已作为背景常驻）
+                let startIdx = seq.indexOf('time');
+                screensaverSeqIndex = (startIdx >= 0) ? ((startIdx + 1) % seq.length) : 0;
 
                 alwaysOnAlarmTimer = setInterval(() => {
                     if (!prefs.screenSaverAlwaysOn || !screensaverActive || screensaverKind !== 'time') {
@@ -6423,27 +6655,40 @@
                     }
                     if (ringingState) return;
 
-                    const alarmEnabled = alarms.some(a => a.enabled && a.saved);
-                    if (!alarmEnabled) {
+                    const seqNow = buildScreensaverSequence();
+                    if (seqNow.length <= 1) {
                         if (alwaysOnAlarmVisible) {
                             alarmScreensaver.classList.remove('active', 'ringing');
+                            powerScreensaver.classList.remove('active');
                             alwaysOnAlarmVisible = false;
                         }
                         return;
                     }
+                    if (screensaverSeqIndex >= seqNow.length) screensaverSeqIndex = 0;
+                    const kind = seqNow[screensaverSeqIndex];
+                    screensaverSeqIndex = (screensaverSeqIndex + 1) % seqNow.length;
 
-                    if (alwaysOnAlarmVisible) {
-                        alarmScreensaver.classList.remove('active', 'ringing');
-                        alwaysOnAlarmVisible = false;
-                    } else {
+                    alarmScreensaver.classList.remove('active', 'ringing');
+                    powerScreensaver.classList.remove('active');
+                    alwaysOnAlarmVisible = false;
+
+                    if (kind === 'alarm') {
                         updateScreensaverContent();
                         alarmScreensaver.classList.add('active');
                         alwaysOnAlarmVisible = true;
+                    } else if (kind === 'power') {
+                        powerScreensaver.classList.add('active');
+                        alwaysOnAlarmVisible = true;
+                        // 每次进入电源屏播放一次提示音
+                        playPowerWarningSound();
                     }
+                    // kind === 'time' → 不叠加，仅显示底层时间屏
                 }, 3000);
 
                 alwaysOnAlarmUpdateTimer = setInterval(() => {
-                    if (alwaysOnAlarmVisible) updateScreensaverContent();
+                    if (alwaysOnAlarmVisible && alarmScreensaver.classList.contains('active')) {
+                        updateScreensaverContent();
+                    }
                 }, 500);
             }
 
@@ -6460,6 +6705,8 @@
                     alarmScreensaver.classList.remove('active', 'ringing');
                     alwaysOnAlarmVisible = false;
                 }
+                // 同时清理电源层（常显模式叠加）
+                powerScreensaver.classList.remove('active');
             }
 
             function updateTimeScreensaverContent() {
@@ -6484,6 +6731,12 @@
                 if (screensaverActive && screensaverKind === 'time') {
                     updateTimeScreensaverContent();
                     return;
+                }
+                if (screensaverActive && screensaverKind === 'power' && !prefs.screenSaverAlwaysOn) {
+                    hidePowerScreensaver(false);
+                }
+                if (screensaverActive && screensaverKind === 'alarm' && !prefs.screenSaverAlwaysOn) {
+                    hideAlarmScreensaver(false);
                 }
                 screensaverActive = true;
                 screensaverKind = 'time';
@@ -6514,29 +6767,25 @@
                 }
             }
 
+            /* ==== 序列驱动：显示下一个息屏内容 ==== */
             function displayNextScreensaver() {
-                const timeEnabled = !!prefs.screenSaverTimeEnabled;
-                const alarmEnabled = alarms.some(a => a.enabled && a.saved);
-
-                let showTime = false;
-                if (screensaverCyclePhase === 'time' && timeEnabled) {
-                    showTime = true;
-                } else if (screensaverCyclePhase === 'alarm' && alarmEnabled) {
-                    showTime = false;
-                } else if (timeEnabled) {
-                    showTime = true;
-                } else if (alarmEnabled) {
-                    showTime = false;
-                } else {
+                const seq = buildScreensaverSequence();
+                if (seq.length === 0) {
+                    screensaverCycleActive = false;
                     return;
                 }
+                if (screensaverSeqIndex >= seq.length) screensaverSeqIndex = 0;
+                const kind = seq[screensaverSeqIndex];
+                screensaverSeqIndex = (screensaverSeqIndex + 1) % seq.length;
 
-                if (showTime) {
+                screensaverCyclePhase = kind;
+
+                if (kind === 'time') {
                     showTimeScreensaver();
-                    screensaverCyclePhase = alarmEnabled ? 'alarm' : 'time';
-                } else {
+                } else if (kind === 'alarm') {
                     showAlarmScreensaver(false);
-                    screensaverCyclePhase = timeEnabled ? 'time' : 'alarm';
+                } else if (kind === 'power') {
+                    showPowerScreensaver();
                 }
             }
 
@@ -6545,11 +6794,20 @@
                 if (screensaverActive && !screensaverRinging) {
                     if (screensaverKind === 'time') hideTimeScreensaver(false);
                     else if (screensaverKind === 'alarm') hideAlarmScreensaver(false);
+                    else if (screensaverKind === 'power') hidePowerScreensaver(false);
                 }
+                // 常显叠加层清理
+                powerScreensaver.classList.remove('active');
+                if (alwaysOnAlarmVisible) {
+                    alarmScreensaver.classList.remove('active', 'ringing');
+                    alwaysOnAlarmVisible = false;
+                }
+                stopAlwaysOnAlarmCycle();
                 if (screensaverCycleActive) {
                     screensaverCycleActive = false;
                     nextCycleAt = 0;
                     screensaverCyclePhase = null;
+                    screensaverSeqIndex = 0;
                 }
             }
             ['mousemove', 'mousedown', 'touchstart', 'keydown', 'wheel', 'touchmove']
@@ -6562,6 +6820,7 @@
                     screensaverCycleActive = false;
                     nextCycleAt = 0;
                     screensaverCyclePhase = null;
+                    screensaverSeqIndex = 0;
                     stopAlwaysOnAlarmCycle();
                     return;
                 }
@@ -6571,6 +6830,7 @@
                         screensaverCycleActive = false;
                         nextCycleAt = 0;
                         screensaverCyclePhase = null;
+                        screensaverSeqIndex = 0;
                         stopAlwaysOnAlarmCycle();
                         return;
                     }
@@ -6581,12 +6841,12 @@
                 } else {
                     if (now - lastActivity >= 10000) {
                         screensaverCycleActive = true;
+                        screensaverSeqIndex = 0;
                         if (prefs.screenSaverAlwaysOn && prefs.screenSaverTimeEnabled) {
                             screensaverCyclePhase = 'always-on';
                             showTimeScreensaver();
                             startAlwaysOnAlarmCycle();
                         } else {
-                            screensaverCyclePhase = prefs.screenSaverTimeEnabled ? 'time' : 'alarm';
                             displayNextScreensaver();
                         }
                     }
@@ -7041,6 +7301,7 @@
                 revokeCurrentVideoUrl();
                 if (customAlertSoundUrl) { try { URL.revokeObjectURL(customAlertSoundUrl); } catch (e) {} }
                 if (customSoundStopTimer) { try { clearTimeout(customSoundStopTimer); } catch (e) {} }
+                if (currentAlarmAudio) { try { currentAlarmAudio.pause(); } catch (e) {} }
                 try { if (fsInterval) clearInterval(fsInterval); } catch (e) {}
                 try { document.removeEventListener('keydown', calcKeyHandler); } catch (e) {}
                 try { if (ringingState) stopRinging(); } catch (e) {}
